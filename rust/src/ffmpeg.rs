@@ -3,6 +3,10 @@
 mod avdevice;
 mod avformat;
 mod avutil;
+mod avutil_bprint;
+mod avutil_error;
+mod avutil_log;
+mod avutil_time;
 mod ffmpeg_h;
 mod ffmpeg_sched;
 mod ffmpeg_utils;
@@ -10,25 +14,22 @@ mod ffmpeg_utils;
 use avdevice::avdevice_register_all;
 use avformat::{avio_closep, avio_flush, avio_write, avformat_network_deinit, avformat_network_init};
 use ffmpeg_h::{
-    AVIOInterruptCB, AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET,
-    AV_LOG_WARNING, AV_TIME_BASE,
+    AVIOInterruptCB, AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET, AV_LOG_WARNING, AV_TIME_BASE,
+    check_avoptions_used, ffmpeg_parse_options, fg_free, fg_send_command, filtergraph_is_simple,
+    hw_device_free_all, ifile_close, init_dynload, of_enc_stats_close, of_free, of_filesize, of_write_trailer,
+    parse_loglevel, show_banner, show_usage, uninit_opts,
+    Decoder, FilterGraph, InputFile, InputStream, OutputFile, OutputStream, InputFilter, OutputFilter,
+    AVCodecParameters, avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free, avcodec_get_class,
+    AVCodecDescriptor, avcodec_descriptor_get,
 };
 use ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
+use avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
+use avutil_time::av_gettime_relative;
 use ffmpeg_utils::{
-    av_err2str, av_log, av_log_get_level, av_log_set_flags, av_log_set_level, av_bprint_finalize,
-    av_bprint_init, av_bprintf, av_gettime_relative, av_strdup, check_avoptions_used,
-    err_merge, ffmpeg_parse_options, fg_free, fg_send_command, filtergraph_is_simple,
-    hw_device_free_all, ifile_close, init_dynload, of_enc_stats_close, of_free, of_filesize,
-    of_write_trailer, parse_loglevel, show_banner, show_usage, uninit_opts,
-    Decoder, FilterGraph, InputFile, InputStream, OutputFile, OutputStream,
-    AVBufferRef, AVFrame, AVPacket, AVOption, AV_BPRINT_SIZE_AUTOMATIC, InputFilter, OutputFilter,
-    AVClass, AVDictionary, AVDictionaryEntry, AVCodecParameters,
-    avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free,
-    av_buffer_create, av_buffer_is_writable, av_buffer_unref, av_free, av_freep,
-    avcodec_get_class, avformat_get_class, av_opt_find, AV_OPT_SEARCH_CHILDREN, AV_OPT_SEARCH_FAKE_OBJ,
-    AV_OPT_FLAG_DECODING_PARAM, AV_OPT_FLAG_ENCODING_PARAM, AVCodecDescriptor, avcodec_descriptor_get,
+    av_log, av_log_get_level, av_log_set_flags, av_log_set_level, av_strdup, err_merge
 };
-use avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
+use avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE};
+use avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
 
 use libc::{c_int, c_void, uint8_t, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
 use std::ffi::{CStr, CString};
@@ -198,10 +199,7 @@ unsafe extern "C" fn term_init() {
 
     libc::sigaction(SIGINT, &action, ptr::null_mut());
     libc::sigaction(SIGTERM, &action, ptr::null_mut());
-    #[cfg(target_os = "linux")]
-    {
-        libc::sigaction(SIGXCPU, &action, ptr::null_mut());
-    }
+    libc::sigaction(SIGXCPU, &action, ptr::null_mut());
     libc::signal(SIGPIPE, libc::SIG_IGN);
 }
 
@@ -1101,6 +1099,19 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
 
     show_banner(argc, argv, ptr::null_mut()); // Assuming 'options' global is handled by show_banner internally or not needed
 
+    // This macro simulates a C 'goto finish;' for error handling.
+    // It cleans up and returns.
+    macro_rules! goto_finish {
+        () => {{
+            if ret == AVERROR_EXIT {
+                ret = 0;
+            }
+            ffmpeg_cleanup(ret);
+            sch_free(&mut sch);
+            return ret;
+        }};
+    }
+
     sch = sch_alloc();
     if sch.is_null() {
         ret = AVERROR(libc::ENOMEM);
@@ -1171,18 +1182,6 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
         ret
     };
 
-    // This macro simulates a C 'goto finish;' for error handling.
-    // It cleans up and returns.
-    macro_rules! goto_finish {
-        () => {{
-            if ret == AVERROR_EXIT {
-                ret = 0;
-            }
-            ffmpeg_cleanup(ret);
-            sch_free(&mut sch);
-            return ret;
-        }};
-    }
     goto_finish!(); // This will only be reached if an error happened before the main loop or if
                     // the loop completes and needs final cleanup.
 }

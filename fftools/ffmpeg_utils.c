@@ -16,30 +16,27 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef FFTOOLS_FFMPEG_UTILS_H
-#define FFTOOLS_FFMPEG_UTILS_H
-
-#include <stdint.h>
-
-#include "libavutil/common.h"
-#include "libavutil/frame.h"
-#include "libavutil/rational.h"
-
-#include "libavcodec/packet.h"
-
-typedef struct Timestamp {
-    int64_t    ts;
-    AVRational tb;
-} Timestamp;
+#include "ffmpeg_utils.h"
 
 /**
  * Merge two return codes - return one of the error codes if at least one of
  * them was negative, 0 otherwise.
  */
-int err_merge(int err0, int err1);
+int err_merge(int err0, int err1)
+{
+    // prefer "real" errors over EOF
+    if ((err0 >= 0 || err0 == AVERROR_EOF) && err1 < 0)
+        return err1;
+    return (err0 < 0) ? err0 : FFMIN(err1, 0);
+}
 
-void pkt_move(void *dst, void *src);
+void pkt_move(void *dst, void *src)
+{
+    av_packet_move_ref(dst, src);
+}
 
-void frame_move(void *dst, void *src);
+void frame_move(void *dst, void *src)
+{
+    av_frame_move_ref(dst, src);
+}
 
-#endif // FFTOOLS_FFMPEG_UTILS_H

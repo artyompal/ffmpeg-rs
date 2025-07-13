@@ -663,11 +663,6 @@ pub const FP_ILOGBNAN: i32 = -2147483648;
 pub const __MATH_DECLARING_DOUBLE: u32 = 1;
 pub const __MATH_DECLARING_FLOATN: u32 = 0;
 pub const __MATH_DECLARE_LDOUBLE: u32 = 1;
-// pub const FP_NAN: u32 = 0;
-// pub const FP_INFINITE: u32 = 1;
-// pub const FP_ZERO: u32 = 2;
-// pub const FP_SUBNORMAL: u32 = 3;
-// pub const FP_NORMAL: u32 = 4;
 pub const MATH_ERRNO: u32 = 1;
 pub const MATH_ERREXCEPT: u32 = 2;
 pub const math_errhandling: u32 = 3;
@@ -3177,11 +3172,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub static mut signgam: ::std::os::raw::c_int;
 }
-// pub const FP_NAN: _bindgen_ty_1 = 0;
-// pub const FP_INFINITE: _bindgen_ty_1 = 1;
-// pub const FP_ZERO: _bindgen_ty_1 = 2;
-// pub const FP_SUBNORMAL: _bindgen_ty_1 = 3;
-// pub const FP_NORMAL: _bindgen_ty_1 = 4;
 pub type _bindgen_ty_1 = ::std::os::raw::c_uint;
 pub type wchar_t = ::std::os::raw::c_int;
 #[repr(C)]

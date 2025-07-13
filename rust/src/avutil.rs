@@ -498,11 +498,6 @@ pub const FP_ILOGBNAN: i32 = -2147483648;
 pub const __MATH_DECLARING_DOUBLE: u32 = 1;
 pub const __MATH_DECLARING_FLOATN: u32 = 0;
 pub const __MATH_DECLARE_LDOUBLE: u32 = 1;
-// pub const FP_NAN: u32 = 0;
-// pub const FP_INFINITE: u32 = 1;
-// pub const FP_ZERO: u32 = 2;
-// pub const FP_SUBNORMAL: u32 = 3;
-// pub const FP_NORMAL: u32 = 4;
 pub const MATH_ERRNO: u32 = 1;
 pub const MATH_ERREXCEPT: u32 = 2;
 pub const math_errhandling: u32 = 3;
@@ -663,15 +658,15 @@ unsafe extern "C" {
     pub fn avutil_license() -> *const ::std::os::raw::c_char;
 }
 #[doc = "< Usually treated as AVMEDIA_TYPE_DATA"]
-pub const AVMediaType_AVMEDIA_TYPE_UNKNOWN: AVMediaType = -1;
-pub const AVMediaType_AVMEDIA_TYPE_VIDEO: AVMediaType = 0;
-pub const AVMediaType_AVMEDIA_TYPE_AUDIO: AVMediaType = 1;
+pub const AVMEDIA_TYPE_UNKNOWN: AVMediaType = -1;
+pub const AVMEDIA_TYPE_VIDEO: AVMediaType = 0;
+pub const AVMEDIA_TYPE_AUDIO: AVMediaType = 1;
 #[doc = "< Opaque data information usually continuous"]
-pub const AVMediaType_AVMEDIA_TYPE_DATA: AVMediaType = 2;
-pub const AVMediaType_AVMEDIA_TYPE_SUBTITLE: AVMediaType = 3;
+pub const AVMEDIA_TYPE_DATA: AVMediaType = 2;
+pub const AVMEDIA_TYPE_SUBTITLE: AVMediaType = 3;
 #[doc = "< Opaque data information usually sparse"]
-pub const AVMediaType_AVMEDIA_TYPE_ATTACHMENT: AVMediaType = 4;
-pub const AVMediaType_AVMEDIA_TYPE_NB: AVMediaType = 5;
+pub const AVMEDIA_TYPE_ATTACHMENT: AVMediaType = 4;
+pub const AVMEDIA_TYPE_NB: AVMediaType = 5;
 #[doc = " @addtogroup lavu_media Media Type\n @brief Media Type"]
 pub type AVMediaType = ::std::os::raw::c_int;
 unsafe extern "C" {
@@ -679,21 +674,21 @@ unsafe extern "C" {
     pub fn av_get_media_type_string(media_type: AVMediaType) -> *const ::std::os::raw::c_char;
 }
 #[doc = "< Undefined"]
-pub const AVPictureType_AV_PICTURE_TYPE_NONE: AVPictureType = 0;
+pub const AV_PICTURE_TYPE_NONE: AVPictureType = 0;
 #[doc = "< Intra"]
-pub const AVPictureType_AV_PICTURE_TYPE_I: AVPictureType = 1;
+pub const AV_PICTURE_TYPE_I: AVPictureType = 1;
 #[doc = "< Predicted"]
-pub const AVPictureType_AV_PICTURE_TYPE_P: AVPictureType = 2;
+pub const AV_PICTURE_TYPE_P: AVPictureType = 2;
 #[doc = "< Bi-dir predicted"]
-pub const AVPictureType_AV_PICTURE_TYPE_B: AVPictureType = 3;
+pub const AV_PICTURE_TYPE_B: AVPictureType = 3;
 #[doc = "< S(GMC)-VOP MPEG-4"]
-pub const AVPictureType_AV_PICTURE_TYPE_S: AVPictureType = 4;
+pub const AV_PICTURE_TYPE_S: AVPictureType = 4;
 #[doc = "< Switching Intra"]
-pub const AVPictureType_AV_PICTURE_TYPE_SI: AVPictureType = 5;
+pub const AV_PICTURE_TYPE_SI: AVPictureType = 5;
 #[doc = "< Switching Predicted"]
-pub const AVPictureType_AV_PICTURE_TYPE_SP: AVPictureType = 6;
+pub const AV_PICTURE_TYPE_SP: AVPictureType = 6;
 #[doc = "< BI type"]
-pub const AVPictureType_AV_PICTURE_TYPE_BI: AVPictureType = 7;
+pub const AV_PICTURE_TYPE_BI: AVPictureType = 7;
 #[doc = " @}\n @}\n @defgroup lavu_picture Image related\n\n AVPicture types, pixel formats and basic image planes manipulation.\n\n @{"]
 pub type AVPictureType = ::std::os::raw::c_uint;
 unsafe extern "C" {
@@ -2165,11 +2160,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub static mut signgam: ::std::os::raw::c_int;
 }
-// pub const FP_NAN: _bindgen_ty_1 = 0;
-// pub const FP_INFINITE: _bindgen_ty_1 = 1;
-// pub const FP_ZERO: _bindgen_ty_1 = 2;
-// pub const FP_SUBNORMAL: _bindgen_ty_1 = 3;
-// pub const FP_NORMAL: _bindgen_ty_1 = 4;
 pub type _bindgen_ty_1 = ::std::os::raw::c_uint;
 pub type __gnuc_va_list = __builtin_va_list;
 #[repr(C)]
@@ -4392,15 +4382,15 @@ const _: () = {
     ["Offset of field: av_intfloat64::f"][::std::mem::offset_of!(av_intfloat64, f) - 0usize];
 };
 #[doc = "< Round toward zero."]
-pub const AVRounding_AV_ROUND_ZERO: AVRounding = 0;
+pub const AV_ROUND_ZERO: AVRounding = 0;
 #[doc = "< Round away from zero."]
-pub const AVRounding_AV_ROUND_INF: AVRounding = 1;
+pub const AV_ROUND_INF: AVRounding = 1;
 #[doc = "< Round toward -infinity."]
-pub const AVRounding_AV_ROUND_DOWN: AVRounding = 2;
+pub const AV_ROUND_DOWN: AVRounding = 2;
 #[doc = "< Round toward +infinity."]
-pub const AVRounding_AV_ROUND_UP: AVRounding = 3;
+pub const AV_ROUND_UP: AVRounding = 3;
 #[doc = "< Round to nearest and halfway cases away from zero."]
-pub const AVRounding_AV_ROUND_NEAR_INF: AVRounding = 5;
+pub const AV_ROUND_NEAR_INF: AVRounding = 5;
 #[doc = " Flag telling rescaling functions to pass `INT64_MIN`/`MAX` through\n unchanged, avoiding special cases for #AV_NOPTS_VALUE.\n\n Unlike other values of the enumeration AVRounding, this value is a\n bitmask that must be used in conjunction with another value of the\n enumeration through a bitwise OR, in order to set behavior for normal\n cases.\n\n @code{.c}\n av_rescale_rnd(3, 1, 2, AV_ROUND_UP | AV_ROUND_PASS_MINMAX);\n // Rescaling 3:\n //     Calculating 3 * 1 / 2\n //     3 / 2 is rounded up to 2\n //     => 2\n\n av_rescale_rnd(AV_NOPTS_VALUE, 1, 2, AV_ROUND_UP | AV_ROUND_PASS_MINMAX);\n // Rescaling AV_NOPTS_VALUE:\n //     AV_NOPTS_VALUE == INT64_MIN\n //     AV_NOPTS_VALUE is passed through\n //     => AV_NOPTS_VALUE\n @endcode"]
 pub const AVRounding_AV_ROUND_PASS_MINMAX: AVRounding = 8192;
 #[doc = " Rounding methods."]
@@ -4457,23 +4447,23 @@ unsafe extern "C" {
     #[doc = " 0th order modified bessel function of the first kind."]
     pub fn av_bessel_i0(x: f64) -> f64;
 }
-pub const AVClassCategory_AV_CLASS_CATEGORY_NA: AVClassCategory = 0;
-pub const AVClassCategory_AV_CLASS_CATEGORY_INPUT: AVClassCategory = 1;
-pub const AVClassCategory_AV_CLASS_CATEGORY_OUTPUT: AVClassCategory = 2;
-pub const AVClassCategory_AV_CLASS_CATEGORY_MUXER: AVClassCategory = 3;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DEMUXER: AVClassCategory = 4;
-pub const AVClassCategory_AV_CLASS_CATEGORY_ENCODER: AVClassCategory = 5;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DECODER: AVClassCategory = 6;
-pub const AVClassCategory_AV_CLASS_CATEGORY_FILTER: AVClassCategory = 7;
-pub const AVClassCategory_AV_CLASS_CATEGORY_BITSTREAM_FILTER: AVClassCategory = 8;
-pub const AVClassCategory_AV_CLASS_CATEGORY_SWSCALER: AVClassCategory = 9;
-pub const AVClassCategory_AV_CLASS_CATEGORY_SWRESAMPLER: AVClassCategory = 10;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_VIDEO_OUTPUT: AVClassCategory = 40;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_VIDEO_INPUT: AVClassCategory = 41;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_AUDIO_OUTPUT: AVClassCategory = 42;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_AUDIO_INPUT: AVClassCategory = 43;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_OUTPUT: AVClassCategory = 44;
-pub const AVClassCategory_AV_CLASS_CATEGORY_DEVICE_INPUT: AVClassCategory = 45;
+pub const AV_CLASS_CATEGORY_NA: AVClassCategory = 0;
+pub const AV_CLASS_CATEGORY_INPUT: AVClassCategory = 1;
+pub const AV_CLASS_CATEGORY_OUTPUT: AVClassCategory = 2;
+pub const AV_CLASS_CATEGORY_MUXER: AVClassCategory = 3;
+pub const AV_CLASS_CATEGORY_DEMUXER: AVClassCategory = 4;
+pub const AV_CLASS_CATEGORY_ENCODER: AVClassCategory = 5;
+pub const AV_CLASS_CATEGORY_DECODER: AVClassCategory = 6;
+pub const AV_CLASS_CATEGORY_FILTER: AVClassCategory = 7;
+pub const AV_CLASS_CATEGORY_BITSTREAM_FILTER: AVClassCategory = 8;
+pub const AV_CLASS_CATEGORY_SWSCALER: AVClassCategory = 9;
+pub const AV_CLASS_CATEGORY_SWRESAMPLER: AVClassCategory = 10;
+pub const AV_CLASS_CATEGORY_DEVICE_VIDEO_OUTPUT: AVClassCategory = 40;
+pub const AV_CLASS_CATEGORY_DEVICE_VIDEO_INPUT: AVClassCategory = 41;
+pub const AV_CLASS_CATEGORY_DEVICE_AUDIO_OUTPUT: AVClassCategory = 42;
+pub const AV_CLASS_CATEGORY_DEVICE_AUDIO_INPUT: AVClassCategory = 43;
+pub const AV_CLASS_CATEGORY_DEVICE_OUTPUT: AVClassCategory = 44;
+pub const AV_CLASS_CATEGORY_DEVICE_INPUT: AVClassCategory = 45;
 #[doc = "< not part of ABI/API"]
 pub const AVClassCategory_AV_CLASS_CATEGORY_NB: AVClassCategory = 46;
 pub type AVClassCategory = ::std::os::raw::c_uint;
@@ -5296,3 +5286,5 @@ pub struct __locale_data {
 pub struct AVOption {
     pub _address: u8,
 }
+
+pub const AV_NOPTS_VALUE: i64 = 0x8000_0000_0000_0000u64 as i64;
