@@ -1,4 +1,16 @@
-FFmpeg README
+README
+=============
+
+This is an attempt of incremental rewriting of ffmpeg in Rust. It started as a fork of ffmpeg-7.1.1. 
+I plan to incrementally rewrite ffmpeg piece-by-piece in Rust. Contributions are welcome.
+I plan to rewrite parts that I'm interested in, which is audio processing. Contributions are welcome for any parts, however.
+
+## Motivation
+
+This is needed to happen because the software written in C/C++ contains essentially an infinite number of bugs.
+I believe that we should use power of Rust to shrink this number.
+
+Original FFmpeg README
 =============
 
 FFmpeg is a collection of libraries and tools to process multimedia content
