@@ -1,7 +1,8 @@
-//! This module provides a multimedia converter based on the FFmpeg libraries.
+//! This is a Rust port of the FFmpeg command line tool.
 
 mod avdevice;
 mod avformat;
+mod avutil;
 mod ffmpeg_h;
 mod ffmpeg_sched;
 mod ffmpeg_utils;
@@ -9,8 +10,8 @@ mod ffmpeg_utils;
 use avdevice::avdevice_register_all;
 use avformat::{avio_closep, avio_flush, avio_write, avformat_network_deinit, avformat_network_init};
 use ffmpeg_h::{
-    AVIOInterruptCB, AVMEDIA_TYPE_VIDEO, AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET,
-    AV_LOG_WARNING, AV_NOPTS_VALUE, AV_TIME_BASE, AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED,
+    AVIOInterruptCB, AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET,
+    AV_LOG_WARNING, AV_TIME_BASE,
 };
 use ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use ffmpeg_utils::{
@@ -27,6 +28,7 @@ use ffmpeg_utils::{
     avcodec_get_class, avformat_get_class, av_opt_find, AV_OPT_SEARCH_CHILDREN, AV_OPT_SEARCH_FAKE_OBJ,
     AV_OPT_FLAG_DECODING_PARAM, AV_OPT_FLAG_ENCODING_PARAM, AVCodecDescriptor, avcodec_descriptor_get,
 };
+use avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
 
 use libc::{c_int, c_void, uint8_t, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
 use std::ffi::{CStr, CString};
@@ -36,8 +38,17 @@ use std::sync::atomic::{self, AtomicI32, AtomicU64};
 use std::sync::OnceLock;
 use std::time::Duration;
 
+// Macro to create CString literals for safety and convenience.
+macro_rules! c_str {
+    ($s:expr) => {
+        unsafe {
+            CStr::from_bytes_with_nul_unchecked(concat!($s, "\0").as_bytes())
+        }
+    };
+}
+
 // External C variables
-extern "C" {
+unsafe extern "C" {
     pub static program_name: *const libc::c_char;
     pub static program_birth_year: libc::c_int;
     pub static mut vstats_file: *mut libc::FILE;
@@ -141,8 +152,7 @@ unsafe extern "C" fn term_exit_sigsafe() {
 }
 
 /// Public function for `term_exit` used in cleanup.
-#[no_mangle]
-pub unsafe extern "C" fn term_exit() {
+unsafe extern "C" fn term_exit() {
     av_log(ptr::null_mut(), AV_LOG_QUIET, c_str!("").as_ptr());
     term_exit_sigsafe();
 }
@@ -160,8 +170,7 @@ unsafe extern "C" fn sigterm_handler(sig: c_int) {
 }
 
 /// Public function for `term_init`.
-#[no_mangle]
-pub unsafe extern "C" fn term_init() {
+unsafe extern "C" fn term_init() {
     let mut action: libc::sigaction = std::mem::zeroed();
     action.sa_handler = sigterm_handler as libc::SigHandler;
     libc::sigfillset(&mut action.sa_mask);
@@ -235,7 +244,7 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
         av_log(
             ptr::null_mut(),
             AV_LOG_INFO,
-            c_str!("bench: maxrss=%"PRId64"KiB\n").as_ptr(),
+            c_str!("bench: maxrss=%llKiB\n").as_ptr(),
             maxrss,
         );
     }
@@ -409,8 +418,7 @@ unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_in
 }
 
 /// Public function for `frame_data`.
-#[no_mangle]
-pub unsafe extern "C" fn frame_data(frame: *mut AVFrame) -> *mut FrameData {
+unsafe extern "C" fn frame_data(frame: *mut AVFrame) -> *mut FrameData {
     let ret = frame_data_ensure(&mut (*frame).opaque_ref, 1);
     if ret < 0 {
         ptr::null_mut()
@@ -420,8 +428,7 @@ pub unsafe extern "C" fn frame_data(frame: *mut AVFrame) -> *mut FrameData {
 }
 
 /// Public function for `frame_data_c`.
-#[no_mangle]
-pub unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData {
+unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData {
     let ret = frame_data_ensure(&mut (*frame).opaque_ref, 0);
     if ret < 0 {
         ptr::null_mut()
@@ -431,8 +438,7 @@ pub unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData {
 }
 
 /// Public function for `packet_data`.
-#[no_mangle]
-pub unsafe extern "C" fn packet_data(pkt: *mut AVPacket) -> *mut FrameData {
+unsafe extern "C" fn packet_data(pkt: *mut AVPacket) -> *mut FrameData {
     let ret = frame_data_ensure(&mut (*pkt).opaque_ref, 1);
     if ret < 0 {
         ptr::null_mut()
@@ -442,8 +448,7 @@ pub unsafe extern "C" fn packet_data(pkt: *mut AVPacket) -> *mut FrameData {
 }
 
 /// Public function for `packet_data_c`.
-#[no_mangle]
-pub unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData {
+unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData {
     let ret = frame_data_ensure(&mut (*pkt).opaque_ref, 0);
     if ret < 0 {
         ptr::null_mut()
@@ -462,7 +467,7 @@ unsafe fn update_benchmark(fmt: Option<&CStr>, args: va_list) {
             av_log(
                 ptr::null_mut(),
                 AV_LOG_INFO,
-                c_str!("bench: %8" PRIu64 " user %8" PRIu64 " sys %8" PRIu64 " real %s \n").as_ptr(),
+                c_str!("bench: %8llu user %8llu sys %8llu real %s \n").as_ptr(),
                 t.user_usec - CURRENT_TIME.get().unwrap().user_usec,
                 t.sys_usec - CURRENT_TIME.get().unwrap().sys_usec,
                 t.real_usec - CURRENT_TIME.get().unwrap().real_usec,
@@ -528,13 +533,13 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
 
             av_bprintf(
                 &mut buf,
-                c_str!("frame=%5"PRId64" fps=%3.*f q=%3.1f ").as_ptr(),
+                c_str!("frame=%5ll fps=%3.*f q=%3.1f ").as_ptr(),
                 frame_number,
                 fps_precision,
                 fps,
                 q,
             );
-            av_bprintf(&mut buf_script, c_str!("frame=%"PRId64"\n").as_ptr(), frame_number);
+            av_bprintf(&mut buf_script, c_str!("frame=%ll\n").as_ptr(), frame_number);
             av_bprintf(&mut buf_script, c_str!("fps=%.2f\n").as_ptr(), fps);
             av_bprintf(
                 &mut buf_script,
@@ -593,7 +598,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     } else {
         av_bprintf(
             &mut buf,
-            c_str!("%s%02"PRId64":%02d:%02d.%02d ").as_ptr(),
+            c_str!("%s%02ll:%02d:%02d.%02d ").as_ptr(),
             hours_sign.as_ptr(),
             hours,
             mins,
@@ -613,18 +618,18 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     if total_size < 0 {
         av_bprintf(&mut buf_script, c_str!("total_size=N/A\n").as_ptr());
     } else {
-        av_bprintf(&mut buf_script, c_str!("total_size=%"PRId64"\n").as_ptr(), total_size);
+        av_bprintf(&mut buf_script, c_str!("total_size=%ll\n").as_ptr(), total_size);
     }
     if current_pts == AV_NOPTS_VALUE {
         av_bprintf(&mut buf_script, c_str!("out_time_us=N/A\n").as_ptr());
         av_bprintf(&mut buf_script, c_str!("out_time_ms=N/A\n").as_ptr());
         av_bprintf(&mut buf_script, c_str!("out_time=N/A\n").as_ptr());
     } else {
-        av_bprintf(&mut buf_script, c_str!("out_time_us=%"PRId64"\n").as_ptr(), current_pts);
-        av_bprintf(&mut buf_script, c_str!("out_time_ms=%"PRId64"\n").as_ptr(), current_pts);
+        av_bprintf(&mut buf_script, c_str!("out_time_us=%ll\n").as_ptr(), current_pts);
+        av_bprintf(&mut buf_script, c_str!("out_time_ms=%ll\n").as_ptr(), current_pts);
         av_bprintf(
             &mut buf_script,
-            c_str!("out_time=%s%02"PRId64":%02d:%02d.%06d\n").as_ptr(),
+            c_str!("out_time=%s%02ll:%02d:%02d.%06d\n").as_ptr(),
             hours_sign.as_ptr(),
             hours,
             mins,
@@ -636,13 +641,13 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     if nb_frames_dup != 0 || nb_frames_drop != 0 {
         av_bprintf(
             &mut buf,
-            c_str!(" dup=%"PRId64" drop=%"PRId64).as_ptr(),
+            c_str!(" dup=%ll drop=%ll").as_ptr(),
             nb_frames_dup,
             nb_frames_drop,
         );
     }
-    av_bprintf(&mut buf_script, c_str!("dup_frames=%"PRId64"\n").as_ptr(), nb_frames_dup);
-    av_bprintf(&mut buf_script, c_str!("drop_frames=%"PRId64"\n").as_ptr(), nb_frames_drop);
+    av_bprintf(&mut buf_script, c_str!("dup_frames=%ll\n").as_ptr(), nb_frames_dup);
+    av_bprintf(&mut buf_script, c_str!("drop_frames=%ll\n").as_ptr(), nb_frames_drop);
 
     if speed < 0.0 {
         av_bprintf(&mut buf, c_str!(" speed=N/A").as_ptr());
@@ -1081,15 +1086,10 @@ unsafe fn getmaxrss() -> i64 {
     0
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn main(argc: c_int, argv: *mut *mut libc::c_char) -> c_int {
+// Original ffmpeg.c main() function
+unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c_int {
     let mut sch: *mut Scheduler = ptr::null_mut();
     let mut ret: c_int;
-
-    init_dynload();
-
-    // No direct equivalent for setvbuf(stderr, NULL, _IONBF, 0) in Rust's standard library
-    // stderr is typically line-buffered or unbuffered by default in interactive contexts.
 
     av_log_set_flags(ffmpeg_h::AV_LOG_SKIP_REPEATED);
     parse_loglevel(argc, argv, ptr::null_mut()); // Assuming 'options' global is handled by parse_loglevel internally or not needed
@@ -1187,11 +1187,18 @@ pub unsafe extern "C" fn main(argc: c_int, argv: *mut *mut libc::c_char) -> c_in
                     // the loop completes and needs final cleanup.
 }
 
-// Macro to create CString literals for safety and convenience.
-macro_rules! c_str {
-    ($s:expr) => {
-        unsafe {
-            CStr::from_bytes_with_nul_unchecked(concat!($s, "\0").as_bytes())
-        }
-    };
+fn main() {
+    use std::env;
+    use std::ffi::CString;
+    use std::os::raw::c_char;
+
+    let args: Vec<String> = env::args().collect();
+    let c_args: Vec<CString> = args.iter().map(|arg| CString::new(arg.as_str()).unwrap()).collect();
+    let mut c_ptrs: Vec<*mut c_char> = c_args.iter().map(|arg| arg.as_ptr() as *mut c_char).collect();
+    c_ptrs.push(std::ptr::null_mut()); // argv must be null-terminated for C
+    let argc = c_args.len() as c_int;
+    let argv = c_ptrs.as_mut_ptr();
+    unsafe {
+        ffmpeg_main(argc, argv);
+    }
 }
