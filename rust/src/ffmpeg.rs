@@ -6,6 +6,7 @@ mod avutil;
 mod avutil_bprint;
 mod avutil_error;
 mod avutil_log;
+mod avutil_mem;
 mod avutil_time;
 mod ffmpeg_h;
 mod ffmpeg_sched;
@@ -20,7 +21,7 @@ use ffmpeg_h::{
     parse_loglevel, show_banner, show_usage, uninit_opts,
     Decoder, FilterGraph, InputFile, InputStream, OutputFile, OutputStream, InputFilter, OutputFilter,
     AVCodecParameters, avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free, avcodec_get_class,
-    AVCodecDescriptor, avcodec_descriptor_get,
+    AVCodecDescriptor, avcodec_descriptor_get, dec_free,
 };
 use ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
@@ -30,6 +31,7 @@ use ffmpeg_utils::{
 };
 use avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE};
 use avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
+use avutil_mem::{av_free, av_freep, av_mallocz};
 
 use libc::{c_int, c_void, uint8_t, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
 use std::ffi::{CStr, CString};
@@ -67,16 +69,16 @@ static NB_OUTPUT_DUMPED: AtomicU64 = AtomicU64::new(0);
 static mut CURRENT_TIME: OnceLock<BenchmarkTimeStamps> = OnceLock::new();
 static mut PROGRESS_AVIO: *mut avformat::AVIOContext = ptr::null_mut();
 
-static mut INPUT_FILES: *mut *mut ffmpeg_utils::InputFile = ptr::null_mut();
+static mut INPUT_FILES: *mut *mut InputFile = ptr::null_mut();
 static mut NB_INPUT_FILES: c_int = 0;
 
-static mut OUTPUT_FILES: *mut *mut ffmpeg_utils::OutputFile = ptr::null_mut();
+static mut OUTPUT_FILES: *mut *mut OutputFile = ptr::null_mut();
 static mut NB_OUTPUT_FILES: c_int = 0;
 
-static mut FILTERGRAPHS: *mut *mut ffmpeg_utils::FilterGraph = ptr::null_mut();
+static mut FILTERGRAPHS: *mut *mut FilterGraph = ptr::null_mut();
 static mut NB_FILTERGRAPHS: c_int = 0;
 
-static mut DECODERS: *mut *mut ffmpeg_utils::Decoder = ptr::null_mut();
+static mut DECODERS: *mut *mut Decoder = ptr::null_mut();
 static mut NB_DECODERS: c_int = 0;
 
 static mut RESTORE_TTY: c_int = 0;
