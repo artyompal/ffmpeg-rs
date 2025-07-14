@@ -1,20 +1,22 @@
 //! This is a Rust port of the FFmpeg command line tool.
 
-mod avdevice;
-mod avformat;
-mod avutil;
-mod avutil_bprint;
-mod avutil_error;
-mod avutil_log;
-mod avutil_mem;
-mod avutil_time;
-mod ffmpeg_h;
-mod ffmpeg_sched;
-mod ffmpeg_utils;
+mod bindings {
+    pub mod avdevice;
+    pub mod avformat;
+    pub mod avutil;
+    pub mod avutil_bprint;
+    pub mod avutil_error;
+    pub mod avutil_log;
+    pub mod avutil_mem;
+    pub mod avutil_time;
+    pub mod ffmpeg_h;
+    pub mod ffmpeg_sched;
+    pub mod ffmpeg_utils;
+}
 
-use avdevice::avdevice_register_all;
-use avformat::{avio_closep, avio_flush, avio_write, avformat_network_deinit, avformat_network_init};
-use ffmpeg_h::{
+use bindings::avdevice::avdevice_register_all;
+use bindings::avformat::{avio_closep, avio_flush, avio_write, avformat_network_deinit, avformat_network_init};
+use bindings::ffmpeg_h::{
     AVIOInterruptCB, AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET, AV_LOG_WARNING, AV_TIME_BASE,
     check_avoptions_used, ffmpeg_parse_options, fg_free, fg_send_command, filtergraph_is_simple,
     hw_device_free_all, ifile_close, init_dynload, of_enc_stats_close, of_free, of_filesize, of_write_trailer,
@@ -23,15 +25,15 @@ use ffmpeg_h::{
     AVCodecParameters, avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free, avcodec_get_class,
     AVCodecDescriptor, avcodec_descriptor_get, dec_free,
 };
-use ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
-use avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
-use avutil_time::av_gettime_relative;
-use ffmpeg_utils::{
+use bindings::ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
+use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
+use bindings::avutil_time::av_gettime_relative;
+use bindings::ffmpeg_utils::{
     av_log, av_log_get_level, av_log_set_flags, av_log_set_level, av_strdup, err_merge
 };
-use avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE};
-use avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
-use avutil_mem::{av_free, av_freep, av_mallocz};
+use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE};
+use bindings::avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
+use bindings::avutil_mem::{av_free, av_freep, av_mallocz};
 
 use libc::{c_int, c_void, uint8_t, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
 use std::ffi::{CStr, CString};
@@ -67,7 +69,7 @@ unsafe extern "C" {
 // Global variables, made safe with OnceLock or atomic types
 static NB_OUTPUT_DUMPED: AtomicU64 = AtomicU64::new(0);
 static mut CURRENT_TIME: OnceLock<BenchmarkTimeStamps> = OnceLock::new();
-static mut PROGRESS_AVIO: *mut avformat::AVIOContext = ptr::null_mut();
+static mut PROGRESS_AVIO: *mut bindings::avformat::AVIOContext = ptr::null_mut();
 
 static mut INPUT_FILES: *mut *mut InputFile = ptr::null_mut();
 static mut NB_INPUT_FILES: c_int = 0;
