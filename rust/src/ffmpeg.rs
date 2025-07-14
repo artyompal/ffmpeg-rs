@@ -17,7 +17,7 @@ mod bindings {
 }
 
 use bindings::avdevice::avdevice_register_all;
-use bindings::avformat::{avio_closep, avio_flush, avio_write, avformat_network_deinit, avformat_network_init};
+use bindings::ffmpeg_h::{avio_closep, avio_flush, avio_write, avformat_network_deinit, avformat_network_init};
 use bindings::avutil::{
     AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET, AV_LOG_WARNING, AV_TIME_BASE, AV_LOG_SKIP_REPEATED,
 };
@@ -33,15 +33,17 @@ use bindings::ffmpeg_h::{
     FF_QP2LAMBDA, 
     nb_input_files, input_files, nb_output_files, output_files, nb_filtergraphs, filtergraphs, nb_decoders, decoders, progress_avio,
 };
-use bindings::ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
+use bindings::ffmpeg_h::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
 use bindings::avutil_time::av_gettime_relative;
-use bindings::ffmpeg_utils::{
-    av_log, av_log_get_level, av_log_set_flags, av_log_set_level, err_merge
+use bindings::ffmpeg_h::{
+    av_log, av_log_get_level, av_log_set_flags, av_log_set_level,
 };
-use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, va_list, vsnprintf, AV_LOG_FATAL};
+use bindings::ffmpeg_utils::err_merge;
+use bindings::ffmpeg_h::{va_list, vsnprintf};
+use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, AV_LOG_FATAL};
 use bindings::avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
-use bindings::avutil_mem::{av_free, av_freep, av_mallocz};
+use bindings::ffmpeg_h::{av_free, av_freep, av_mallocz};
 
 use libc::{c_int, c_void, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
 use std::ffi::{CStr, CString};
@@ -769,7 +771,7 @@ unsafe fn print_stream_maps() {
                     ptr::null_mut(),
                     AV_LOG_INFO,
                     c_str!(" (graph %d)").as_ptr(),
-                    (*(*ost).filter).graph.index,
+                    (*(*(*ost).filter).graph).index,
                 );
             }
             av_log(
@@ -778,7 +780,7 @@ unsafe fn print_stream_maps() {
                 c_str!(" -> Stream #%d:%d (%s)\n").as_ptr(),
                 (*(*ost).file).index,
                 (*ost).index,
-                c_str_to_rust_str((*(*ost).enc_ctx).codec.name),
+                c_str_to_rust_str((*(*(*ost).enc_ctx).codec).name),
             );
             ost = ost_iter(ost);
             continue;
