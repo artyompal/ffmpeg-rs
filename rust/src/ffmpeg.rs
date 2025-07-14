@@ -1,5 +1,7 @@
 //! This is a Rust port of the FFmpeg command line tool.
 
+#![allow(non_camel_case_types)]
+
 mod bindings {
     pub mod avdevice;
     pub mod avformat;
@@ -24,6 +26,9 @@ use bindings::ffmpeg_h::{
     Decoder, FilterGraph, InputFile, InputStream, OutputFile, OutputStream, InputFilter, OutputFilter,
     AVCodecParameters, avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free, avcodec_get_class,
     AVCodecDescriptor, avcodec_descriptor_get, dec_free,
+    AVBufferRef, AVFrame, AVPacket,
+    av_buffer_is_writable, av_buffer_create, av_buffer_unref,
+    FF_QP2LAMBDA, AV_LOG_SKIP_REPEATED,
 };
 use bindings::ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
@@ -31,7 +36,7 @@ use bindings::avutil_time::av_gettime_relative;
 use bindings::ffmpeg_utils::{
     av_log, av_log_get_level, av_log_set_flags, av_log_set_level, av_strdup, err_merge
 };
-use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE};
+use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, va_list, vsnprintf, AV_LOG_FATAL};
 use bindings::avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
 use bindings::avutil_mem::{av_free, av_freep, av_mallocz};
 
@@ -177,7 +182,7 @@ unsafe extern "C" fn sigterm_handler(sig: c_int) {
 /// Public function for `term_init`.
 unsafe extern "C" fn term_init() {
     let mut action: libc::sigaction = std::mem::zeroed();
-    action.sa_handler = sigterm_handler as libc::SigHandler;
+    action.sa_handler = Some(sigterm_handler as unsafe extern "C" fn(c_int));
     libc::sigfillset(&mut action.sa_mask);
     action.sa_flags = libc::SA_RESTART;
 
@@ -513,7 +518,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     let mut ost = ost_iter(ptr::null_mut());
     while !ost.is_null() {
         let q = if !(*ost).enc.is_null() {
-            (*(*ost).quality).load(atomic::Ordering::SeqCst) as f32 / (*ffmpeg_h::FF_QP2LAMBDA) as f32
+            (*(*ost).quality).load(atomic::Ordering::SeqCst) as f32 / (*FF_QP2LAMBDA) as f32
         } else {
             -1.0
         };
@@ -1073,9 +1078,9 @@ unsafe fn get_benchmark_time_stamps() -> BenchmarkTimeStamps {
     let mut rusage: libc::rusage = std::mem::zeroed();
     libc::getrusage(libc::RUSAGE_SELF, &mut rusage);
     time_stamps.user_usec =
-        (rusage.ru_utime.tv_sec * 1_000_000_000LL) / 1000 + rusage.ru_utime.tv_usec;
+        (rusage.ru_utime.tv_sec * 1_000_000_000i64) / 1000 + rusage.ru_utime.tv_usec;
     time_stamps.sys_usec =
-        (rusage.ru_stime.tv_sec * 1_000_000_000LL) / 1000 + rusage.ru_stime.tv_usec;
+        (rusage.ru_stime.tv_sec * 1_000_000_000i64) / 1000 + rusage.ru_stime.tv_usec;
     
     time_stamps
 }
@@ -1093,7 +1098,7 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
     let mut sch: *mut Scheduler = ptr::null_mut();
     let mut ret: c_int;
 
-    av_log_set_flags(ffmpeg_h::AV_LOG_SKIP_REPEATED);
+    av_log_set_flags(AV_LOG_SKIP_REPEATED);
     parse_loglevel(argc, argv, ptr::null_mut()); // Assuming 'options' global is handled by parse_loglevel internally or not needed
 
     // CONFIG_AVDEVICE is assumed to be true since we include avdevice.rs

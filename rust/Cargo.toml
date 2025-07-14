@@ -9,22 +9,3 @@ libc = "0.2.174"
 [[bin]]
 name = "ffmpeg_rs"
 path = "src/ffmpeg.rs"
-
-[build]
-rustflags = [
-    "-C", "link-arg=-L../libavcodec",
-    "-C", "link-arg=-lavcodec",
-    "-C", "link-arg=-L../libavformat",
-    "-C", "link-arg=-lavformat",
-    "-C", "link-arg=-L../libavdevice",
-    "-C", "link-arg=-lavdevice",
-    "-C", "link-arg=-L../libavutil",
-    "-C", "link-arg=-lavutil",
-    "-C", "link-arg=-L../libswresample",
-    "-C", "link-arg=-lswresample",
-    "-C", "link-arg=-L../libswscale",
-    "-C", "link-arg=-lswscale",
-    "-C", "link-arg=-lm",
-    "-C", "link-arg=-lz",
-    "-C", "link-arg=-lpthread"
-]
