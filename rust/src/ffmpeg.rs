@@ -25,12 +25,13 @@ use bindings::ffmpeg_h::{
     AVIOInterruptCB,  ffmpeg_parse_options, fg_free, fg_send_command, filtergraph_is_simple,
     hw_device_free_all, ifile_close, of_enc_stats_close, of_free, of_filesize, of_write_trailer,
     parse_loglevel, show_banner, show_usage, uninit_opts,
-    Decoder, FilterGraph, InputFile, InputStream, OutputFile, OutputStream,
+    InputStream, OutputStream,
     AVCodecParameters, avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free,
     avcodec_descriptor_get, dec_free,
     AVBufferRef, AVFrame, AVPacket,
     av_buffer_is_writable, av_buffer_create, av_buffer_unref,
     FF_QP2LAMBDA, 
+    nb_input_files, input_files, nb_output_files, output_files, nb_filtergraphs, filtergraphs, nb_decoders, decoders, progress_avio,
 };
 use bindings::ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
@@ -75,19 +76,6 @@ unsafe extern "C" {
 // Global variables, made safe with OnceLock or atomic types
 static NB_OUTPUT_DUMPED: AtomicU64 = AtomicU64::new(0);
 static mut CURRENT_TIME: OnceLock<BenchmarkTimeStamps> = OnceLock::new();
-static mut PROGRESS_AVIO: *mut bindings::avformat::AVIOContext = ptr::null_mut();
-
-static mut INPUT_FILES: *mut *mut InputFile = ptr::null_mut();
-static mut NB_INPUT_FILES: c_int = 0;
-
-static mut OUTPUT_FILES: *mut *mut OutputFile = ptr::null_mut();
-static mut NB_OUTPUT_FILES: c_int = 0;
-
-static mut FILTERGRAPHS: *mut *mut FilterGraph = ptr::null_mut();
-static mut NB_FILTERGRAPHS: c_int = 0;
-
-static mut DECODERS: *mut *mut Decoder = ptr::null_mut();
-static mut NB_DECODERS: c_int = 0;
 
 static mut RESTORE_TTY: c_int = 0;
 static mut OLD_TTY: libc::termios =
@@ -257,31 +245,33 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
         );
     }
 
-    for i in 0..NB_FILTERGRAPHS {
-        fg_free(&mut *FILTERGRAPHS.add(i as usize));
+    for i in 0..nb_filtergraphs {
+        fg_free(&mut *filtergraphs.add(i as usize));
     }
-    av_freep(&mut FILTERGRAPHS as *mut _ as *mut c_void);
+    av_freep(&mut filtergraphs as *mut _ as *mut c_void);
 
-    for i in 0..NB_OUTPUT_FILES {
-        of_free(&mut *OUTPUT_FILES.add(i as usize));
-    }
-
-    for i in 0..NB_INPUT_FILES {
-        ifile_close(&mut *INPUT_FILES.add(i as usize));
+    for i in 0..nb_output_files {
+        of_free(&mut *output_files.add(i as usize));
     }
 
-    for i in 0..NB_DECODERS {
-        dec_free(&mut *DECODERS.add(i as usize));
+    for i in 0..nb_input_files {
+        ifile_close(&mut *input_files.add(i as usize));
     }
-    av_freep(&mut DECODERS as *mut _ as *mut c_void);
+
+    for i in 0..nb_decoders {
+        dec_free(&mut *decoders.add(i as usize));
+    }
+    av_freep(&mut decoders as *mut _ as *mut c_void);
 
     if !vstats_file.is_null() {
         if libc::fclose(vstats_file) != 0 {
+            let err_str = av_err2str(AVERROR(io::Error::last_os_error().raw_os_error().unwrap_or(0)));
+            let err_cstr = std::ffi::CString::new(err_str).unwrap();
             av_log(
                 ptr::null_mut(),
                 AV_LOG_ERROR,
                 c_str!("Error closing vstats file, loss of information possible: %s\n").as_ptr(),
-                av_err2str(AVERROR(io::Error::last_os_error().raw_os_error().unwrap_or(0))),
+                err_cstr.as_ptr(),
             );
         }
     }
@@ -294,8 +284,8 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
 
     av_freep(&mut filter_nbthreads as *mut _ as *mut c_void);
 
-    av_freep(&mut INPUT_FILES as *mut _ as *mut c_void);
-    av_freep(&mut OUTPUT_FILES as *mut _ as *mut c_void);
+    av_freep(&mut input_files as *mut _ as *mut c_void);
+    av_freep(&mut output_files as *mut _ as *mut c_void);
 
     uninit_opts();
 
@@ -331,8 +321,8 @@ unsafe fn ost_iter(prev: *mut OutputStream) -> *mut OutputStream {
         (*prev).index + 1
     };
 
-    while of_idx < NB_OUTPUT_FILES {
-        let of = *OUTPUT_FILES.add(of_idx as usize);
+    while of_idx < nb_output_files {
+        let of = *output_files.add(of_idx as usize);
         if ost_idx < (*of).nb_streams {
             return *(*of).streams.add(ost_idx as usize);
         }
@@ -354,8 +344,8 @@ unsafe fn ist_iter(prev: *mut InputStream) -> *mut InputStream {
         (*prev).index + 1
     };
 
-    while if_idx < NB_INPUT_FILES {
-        let f = *INPUT_FILES.add(if_idx as usize);
+    while if_idx < nb_input_files {
+        let f = *input_files.add(if_idx as usize);
         if ist_idx < (*f).nb_streams {
             return *(*f).streams.add(ist_idx as usize);
         }
@@ -470,7 +460,7 @@ unsafe fn update_benchmark(fmt: Option<&CStr>, args: va_list) {
         let t = get_benchmark_time_stamps();
         if let Some(fmt_cstr) = fmt {
             let mut buf = [0; 1024];
-            let _ = vsnprintf(buf.as_mut_ptr() as *mut libc::c_char, buf.len(), fmt_cstr.as_ptr(), args);
+            let _ = vsnprintf(buf.as_mut_ptr() as *mut libc::c_char, buf.len().try_into().unwrap(), fmt_cstr.as_ptr(), args);
 
             av_log(
                 ptr::null_mut(),
@@ -489,14 +479,14 @@ unsafe fn update_benchmark(fmt: Option<&CStr>, args: va_list) {
 unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, pts: i64) {
     let mut buf = std::mem::zeroed();
     let mut buf_script = std::mem::zeroed();
-    let total_size = of_filesize(*OUTPUT_FILES.add(0)); // Assuming output_files[0] exists
+    let total_size = of_filesize(*output_files.add(0)); // Assuming output_files[0] exists
     let mut vid = 0;
     let mut last_time: i64 = -1;
     static mut FIRST_REPORT: c_int = 1;
     let mut nb_frames_dup: u64 = 0;
     let mut nb_frames_drop: u64 = 0;
 
-    if print_stats == 0 && is_last_report == 0 && PROGRESS_AVIO.is_null() {
+    if print_stats == 0 && is_last_report == 0 && progress_avio.is_null() {
         return;
     }
 
@@ -505,7 +495,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
             last_time = cur_time;
         }
         if ((cur_time - last_time) < stats_period && FIRST_REPORT != 1) ||
-            (FIRST_REPORT != 0 && NB_OUTPUT_DUMPED.load(atomic::Ordering::SeqCst) < NB_OUTPUT_FILES as u64) {
+            (FIRST_REPORT != 0 && NB_OUTPUT_DUMPED.load(atomic::Ordering::SeqCst) < nb_output_files as u64) {
             return;
         }
         last_time = cur_time;
@@ -683,7 +673,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     }
     av_bprint_finalize(&mut buf, ptr::null_mut());
 
-    if !PROGRESS_AVIO.is_null() {
+    if !progress_avio.is_null() {
         av_bprintf(
             &mut buf_script,
             c_str!("progress=%s\n").as_ptr(),
@@ -694,20 +684,22 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
             },
         );
         avio_write(
-            PROGRESS_AVIO,
+            progress_avio,
             buf_script.str_ as *const u8,
-            buf_script.len.min(buf_script.size as usize - 1) as c_int,
+            buf_script.len.min(buf_script.size as usize - 1).try_into().unwrap(),
         );
-        avio_flush(PROGRESS_AVIO);
+        avio_flush(progress_avio);
         av_bprint_finalize(&mut buf_script, ptr::null_mut());
         if is_last_report != 0 {
-            let ret = avio_closep(&mut PROGRESS_AVIO);
+            let ret = avio_closep(&mut progress_avio);
             if ret < 0 {
+                let err_str = av_err2str(ret);
+                let err_cstr = std::ffi::CString::new(err_str).unwrap();
                 av_log(
                     ptr::null_mut(),
                     AV_LOG_ERROR,
                     c_str!("Error closing progress log, loss of information possible: %s\n").as_ptr(),
-                    av_err2str(ret),
+                    err_cstr.as_ptr(),
                 );
             }
         }
@@ -736,7 +728,7 @@ unsafe fn print_stream_maps() {
                     }),
                     c_str_to_rust_str((*filter).name),
                 );
-                if NB_FILTERGRAPHS > 1 {
+                if nb_filtergraphs > 1 {
                     av_log(
                         ptr::null_mut(),
                         AV_LOG_INFO,
@@ -772,7 +764,7 @@ unsafe fn print_stream_maps() {
                 c_str!("  %s").as_ptr(),
                 (*(*ost).filter).name,
             );
-            if NB_FILTERGRAPHS > 1 {
+            if nb_filtergraphs > 1 {
                 av_log(
                     ptr::null_mut(),
                     AV_LOG_INFO,
@@ -979,9 +971,9 @@ unsafe fn check_keyboard_interaction(cur_time: i64) -> c_int {
                 }
                 ost = ost_iter(ost);
             }
-            for i in 0..NB_FILTERGRAPHS {
+            for i in 0..nb_filtergraphs {
                 fg_send_command(
-                    *FILTERGRAPHS.add(i as usize),
+                    *filtergraphs.add(i as usize),
                     time,
                     target.as_ptr() as *mut libc::c_char,
                     command.as_ptr() as *mut libc::c_char,
@@ -1057,8 +1049,8 @@ unsafe fn transcode(sch: *mut Scheduler) -> c_int {
 
     ret = sch_stop(sch, &mut transcode_ts);
 
-    for i in 0..NB_OUTPUT_FILES {
-        let err = of_write_trailer(*OUTPUT_FILES.add(i as usize));
+    for i in 0..nb_output_files {
+        let err = of_write_trailer(*output_files.add(i as usize));
         ret = err_merge(ret, err);
     }
 
@@ -1091,6 +1083,23 @@ unsafe fn getmaxrss() -> i64 {
     libc::getrusage(libc::RUSAGE_SELF, &mut rusage);
     // Assuming ru_maxrss is in kilobytes on Linux/macOS
     return rusage.ru_maxrss * 1024;
+}
+
+/// Safe Rust implementation of av_err2str.
+pub fn av_err2str(errnum: i32) -> String {
+    use std::ffi::CStr;
+    use bindings::avutil::av_strerror;
+    let mut buf = [0u8; 4096];
+    unsafe {
+        let ret = av_strerror(errnum, buf.as_mut_ptr() as *mut i8, buf.len());
+        if ret == 0 {
+            // Find the first null byte to avoid overrun
+            let cstr = CStr::from_ptr(buf.as_ptr() as *const i8);
+            cstr.to_string_lossy().into_owned()
+        } else {
+            format!("Unknown error code: {}", errnum)
+        }
+    }
 }
 
 // Original ffmpeg.c main() function
@@ -1132,18 +1141,7 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
         goto_finish!();
     }
 
-    // Update global variables after parsing options
-    NB_INPUT_FILES = *ffmpeg_utils::NB_INPUT_FILES;
-    INPUT_FILES = ffmpeg_utils::INPUT_FILES;
-    NB_OUTPUT_FILES = *ffmpeg_utils::NB_OUTPUT_FILES;
-    OUTPUT_FILES = ffmpeg_utils::OUTPUT_FILES;
-    NB_FILTERGRAPHS = *ffmpeg_utils::NB_FILTERGRAPHS;
-    FILTERGRAPHS = ffmpeg_utils::FILTERGRAPHS;
-    NB_DECODERS = *ffmpeg_utils::NB_DECODERS;
-    DECODERS = ffmpeg_utils::DECODERS;
-    PROGRESS_AVIO = *ffmpeg_utils::PROGRESS_AVIO; // Assuming PROGRESS_AVIO is set by parse_options
-
-    if NB_OUTPUT_FILES <= 0 && NB_INPUT_FILES == 0 {
+    if nb_output_files <= 0 && nb_input_files == 0 {
         show_usage();
         av_log(
             ptr::null_mut(),
@@ -1155,7 +1153,7 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
         goto_finish!();
     }
 
-    if NB_OUTPUT_FILES <= 0 {
+    if nb_output_files <= 0 {
         av_log(
             ptr::null_mut(),
             AV_LOG_FATAL,

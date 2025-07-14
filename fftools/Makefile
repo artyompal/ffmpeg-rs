@@ -20,6 +20,7 @@ OBJS-ffmpeg +=                  \
     fftools/ffmpeg_opt.o        \
     fftools/ffmpeg_sched.o      \
     fftools/ffmpeg_utils.o      \
+    fftools/ffmpeg_vars.o       \
     fftools/objpool.o           \
     fftools/sync_queue.o        \
     fftools/thread_queue.o      \
