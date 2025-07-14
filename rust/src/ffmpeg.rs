@@ -18,35 +18,36 @@ mod bindings {
 
 use bindings::avdevice::avdevice_register_all;
 use bindings::avformat::{avio_closep, avio_flush, avio_write, avformat_network_deinit, avformat_network_init};
+use bindings::avutil::{
+    AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET, AV_LOG_WARNING, AV_TIME_BASE, AV_LOG_SKIP_REPEATED,
+};
 use bindings::ffmpeg_h::{
-    AVIOInterruptCB, AV_LOG_DEBUG, AV_LOG_ERROR, AV_LOG_INFO, AV_LOG_QUIET, AV_LOG_WARNING, AV_TIME_BASE,
-    check_avoptions_used, ffmpeg_parse_options, fg_free, fg_send_command, filtergraph_is_simple,
-    hw_device_free_all, ifile_close, init_dynload, of_enc_stats_close, of_free, of_filesize, of_write_trailer,
+    AVIOInterruptCB,  ffmpeg_parse_options, fg_free, fg_send_command, filtergraph_is_simple,
+    hw_device_free_all, ifile_close, of_enc_stats_close, of_free, of_filesize, of_write_trailer,
     parse_loglevel, show_banner, show_usage, uninit_opts,
-    Decoder, FilterGraph, InputFile, InputStream, OutputFile, OutputStream, InputFilter, OutputFilter,
-    AVCodecParameters, avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free, avcodec_get_class,
-    AVCodecDescriptor, avcodec_descriptor_get, dec_free,
+    Decoder, FilterGraph, InputFile, InputStream, OutputFile, OutputStream,
+    AVCodecParameters, avcodec_parameters_alloc, avcodec_parameters_copy, avcodec_parameters_free,
+    avcodec_descriptor_get, dec_free,
     AVBufferRef, AVFrame, AVPacket,
     av_buffer_is_writable, av_buffer_create, av_buffer_unref,
-    FF_QP2LAMBDA, AV_LOG_SKIP_REPEATED,
+    FF_QP2LAMBDA, 
 };
 use bindings::ffmpeg_sched::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
 use bindings::avutil_time::av_gettime_relative;
 use bindings::ffmpeg_utils::{
-    av_log, av_log_get_level, av_log_set_flags, av_log_set_level, av_strdup, err_merge
+    av_log, av_log_get_level, av_log_set_flags, av_log_set_level, err_merge
 };
 use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, va_list, vsnprintf, AV_LOG_FATAL};
 use bindings::avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
 use bindings::avutil_mem::{av_free, av_freep, av_mallocz};
 
-use libc::{c_int, c_void, uint8_t, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
+use libc::{c_int, c_void, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::ptr;
 use std::sync::atomic::{self, AtomicI32, AtomicU64};
 use std::sync::OnceLock;
-use std::time::Duration;
 
 // Macro to create CString literals for safety and convenience.
 macro_rules! c_str {
@@ -182,7 +183,7 @@ unsafe extern "C" fn sigterm_handler(sig: c_int) {
 /// Public function for `term_init`.
 unsafe extern "C" fn term_init() {
     let mut action: libc::sigaction = std::mem::zeroed();
-    action.sa_handler = Some(sigterm_handler as unsafe extern "C" fn(c_int));
+    action.sa_sigaction = sigterm_handler as usize;
     libc::sigfillset(&mut action.sa_mask);
     action.sa_flags = libc::SA_RESTART;
 
@@ -213,7 +214,7 @@ unsafe extern "C" fn term_init() {
 }
 
 unsafe fn read_key() -> c_int {
-    let mut ch: uint8_t = 0;
+    let mut ch: u8 = 0;
     let mut tv = libc::timeval {
         tv_sec: 0,
         tv_usec: 0,
@@ -240,7 +241,7 @@ unsafe extern "C" fn decode_interrupt_cb(_ctx: *mut c_void) -> c_int {
         > TRANSCODE_INIT_DONE.load(atomic::Ordering::SeqCst)) as c_int
 }
 
-static INT_CB: AVIOInterruptCB = AVIOInterruptCB {
+const INT_CB: AVIOInterruptCB = AVIOInterruptCB {
     callback: Some(decode_interrupt_cb),
     opaque: ptr::null_mut(),
 };
@@ -364,7 +365,7 @@ unsafe fn ist_iter(prev: *mut InputStream) -> *mut InputStream {
     ptr::null_mut()
 }
 
-unsafe extern "C" fn frame_data_free(_opaque: *mut c_void, data: *mut uint8_t) {
+unsafe extern "C" fn frame_data_free(_opaque: *mut c_void, data: *mut u8) {
     let fd = data as *mut FrameData;
     avcodec_parameters_free(&mut (*fd).par_enc);
     av_free(data as *mut c_void);
@@ -380,7 +381,7 @@ unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_in
         }
 
         *dst = av_buffer_create(
-            fd_ptr as *mut uint8_t,
+            fd_ptr as *mut u8,
             std::mem::size_of::<FrameData>(),
             Some(frame_data_free),
             ptr::null_mut(),
@@ -581,7 +582,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     let us = (current_pts.abs() % AV_TIME_BASE as i64) as c_int;
     let secs = (current_pts.abs() / AV_TIME_BASE as i64 % 60) as c_int;
     let mins = (current_pts.abs() / AV_TIME_BASE as i64 / 60 % 60) as c_int;
-    let hours = (current_pts.abs() / AV_TIME_BASE as i64 / 3600);
+    let hours = current_pts.abs() / AV_TIME_BASE as i64 / 3600;
     let hours_sign = if current_pts < 0 { "-" } else { "" };
 
     let bitrate = if current_pts != AV_NOPTS_VALUE && current_pts != 0 && total_size >= 0 {
@@ -694,7 +695,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
         );
         avio_write(
             PROGRESS_AVIO,
-            buf_script.str as *const uint8_t,
+            buf_script.str as *const u8,
             buf_script.len.min(buf_script.size as usize - 1) as c_int,
         );
         avio_flush(PROGRESS_AVIO);
