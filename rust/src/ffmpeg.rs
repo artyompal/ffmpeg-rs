@@ -260,7 +260,7 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
     for i in 0..NB_FILTERGRAPHS {
         fg_free(&mut *FILTERGRAPHS.add(i as usize));
     }
-    av_freep(&mut FILTERGRAPHS as *mut _ as *mut *mut c_void);
+    av_freep(&mut FILTERGRAPHS as *mut _ as *mut c_void);
 
     for i in 0..NB_OUTPUT_FILES {
         of_free(&mut *OUTPUT_FILES.add(i as usize));
@@ -273,7 +273,7 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
     for i in 0..NB_DECODERS {
         dec_free(&mut *DECODERS.add(i as usize));
     }
-    av_freep(&mut DECODERS as *mut _ as *mut *mut c_void);
+    av_freep(&mut DECODERS as *mut _ as *mut c_void);
 
     if !vstats_file.is_null() {
         if libc::fclose(vstats_file) != 0 {
@@ -287,15 +287,15 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
     }
     // Assuming vstats_filename is a global C pointer that needs to be freed
     let mut vstats_filename_ptr: *mut libc::c_char = ptr::null_mut();
-    av_freep(&mut vstats_filename_ptr as *mut _ as *mut *mut c_void);
+    av_freep(&mut vstats_filename_ptr as *mut _ as *mut c_void);
     of_enc_stats_close();
 
     hw_device_free_all();
 
-    av_freep(&mut filter_nbthreads as *mut _ as *mut *mut c_void);
+    av_freep(&mut filter_nbthreads as *mut _ as *mut c_void);
 
-    av_freep(&mut INPUT_FILES as *mut _ as *mut *mut c_void);
-    av_freep(&mut OUTPUT_FILES as *mut _ as *mut *mut c_void);
+    av_freep(&mut INPUT_FILES as *mut _ as *mut c_void);
+    av_freep(&mut OUTPUT_FILES as *mut _ as *mut c_void);
 
     uninit_opts();
 
@@ -375,7 +375,7 @@ unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_in
     let mut src = *dst;
 
     if src.is_null() || (writable != 0 && av_buffer_is_writable(src) == 0) {
-        let fd_ptr = av_mallocz(std::mem::size_of::<FrameData>()) as *mut FrameData;
+        let mut fd_ptr = av_mallocz(std::mem::size_of::<FrameData>()) as *mut FrameData;
         if fd_ptr.is_null() {
             return AVERROR(libc::ENOMEM);
         }
@@ -389,7 +389,7 @@ unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_in
         );
         if (*dst).is_null() {
             av_buffer_unref(&mut src);
-            av_freep(&mut fd_ptr as *mut _ as *mut *mut c_void);
+            av_freep(&mut fd_ptr as *mut _ as *mut c_void);
             return AVERROR(libc::ENOMEM);
         }
 
@@ -668,15 +668,15 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     if print_stats != 0 || is_last_report != 0 {
         let end = if is_last_report != 0 { b'\n' } else { b'\r' };
         if print_stats == 1 && AV_LOG_INFO > av_log_get_level() {
-            let buf_str = CStr::from_ptr(buf.str).to_string_lossy();
+            let buf_str = CStr::from_ptr(buf.str_).to_string_lossy();
             let _ = io::stderr().write_all(format!("{}    {}\n", buf_str, end as char).as_bytes());
         } else {
             av_log(
                 ptr::null_mut(),
                 AV_LOG_INFO,
                 c_str!("%s    %c").as_ptr(),
-                buf.str,
-                end,
+                buf.str_,
+                end as c_int,
             );
         }
         let _ = io::stderr().flush();
@@ -695,7 +695,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
         );
         avio_write(
             PROGRESS_AVIO,
-            buf_script.str as *const u8,
+            buf_script.str_ as *const u8,
             buf_script.len.min(buf_script.size as usize - 1) as c_int,
         );
         avio_flush(PROGRESS_AVIO);
@@ -1041,7 +1041,7 @@ unsafe fn transcode(sch: *mut Scheduler) -> c_int {
     let mut transcode_ts: i64 = 0;
 
     loop {
-        let wait_ret = sch_wait(sch, stats_period, &mut transcode_ts);
+        let wait_ret = sch_wait(sch, stats_period.try_into().unwrap(), &mut transcode_ts);
         if wait_ret != 0 {
             break;
         }
@@ -1091,7 +1091,6 @@ unsafe fn getmaxrss() -> i64 {
     libc::getrusage(libc::RUSAGE_SELF, &mut rusage);
     // Assuming ru_maxrss is in kilobytes on Linux/macOS
     return rusage.ru_maxrss * 1024;
-    0
 }
 
 // Original ffmpeg.c main() function
