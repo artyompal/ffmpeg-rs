@@ -45,7 +45,7 @@ use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, AV_LOG_FATAL};
 use bindings::avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
 use bindings::ffmpeg_h::{av_free, av_freep, av_mallocz};
 
-use libc::{c_int, c_void, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
+use libc::{c_double, c_int, c_void, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::ptr;
@@ -457,12 +457,12 @@ unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData {
     }
 }
 
-unsafe fn update_benchmark(fmt: Option<&CStr>, args: va_list) {
+unsafe fn update_benchmark(fmt: Option<&CStr>, mut args: va_list) {
     if do_benchmark_all != 0 {
         let t = get_benchmark_time_stamps();
         if let Some(fmt_cstr) = fmt {
             let mut buf = [0; 1024];
-            let _ = vsnprintf(buf.as_mut_ptr() as *mut libc::c_char, buf.len().try_into().unwrap(), fmt_cstr.as_ptr(), args);
+            let _ = vsnprintf(buf.as_mut_ptr() as *mut libc::c_char, buf.len().try_into().unwrap(), fmt_cstr.as_ptr(), args.as_mut_ptr());
 
             av_log(
                 ptr::null_mut(),
@@ -511,23 +511,23 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
     let mut ost = ost_iter(ptr::null_mut());
     while !ost.is_null() {
         let q = if !(*ost).enc.is_null() {
-            (*(*ost).quality).load(atomic::Ordering::SeqCst) as f32 / (*FF_QP2LAMBDA) as f32
+            (*ost).quality.load(atomic::Ordering::SeqCst) as f32 / FF_QP2LAMBDA as f32
         } else {
             -1.0
         };
 
         if vid != 0 && (*ost).type_ == AVMEDIA_TYPE_VIDEO {
-            av_bprintf(&mut buf, c_str!("q=%.1f ").as_ptr(), q);
+            av_bprintf(&mut buf, c_str!("q=%.1f ").as_ptr(), q as c_double);
             av_bprintf(
                 &mut buf_script,
                 c_str!("stream_%d_%d_q=%.1f\n").as_ptr(),
                 (*(*ost).file).index,
                 (*ost).index,
-                q,
+                q as c_double,
             );
         }
         if vid == 0 && (*ost).type_ == AVMEDIA_TYPE_VIDEO {
-            let frame_number = (*(*ost).packets_written).load(atomic::Ordering::SeqCst);
+            let frame_number = (*ost).packets_written.load(atomic::Ordering::SeqCst);
             let fps = if t_elapsed > 1.0 { frame_number as f64 / t_elapsed } else { 0.0 };
             let fps_precision = if fps < 9.95 { 1 } else { 0 }; // Similar logic to C's %3.*f
 
@@ -537,7 +537,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
                 frame_number,
                 fps_precision,
                 fps,
-                q,
+                q as c_double,
             );
             av_bprintf(&mut buf_script, c_str!("frame=%ll\n").as_ptr(), frame_number);
             av_bprintf(&mut buf_script, c_str!("fps=%.2f\n").as_ptr(), fps);
@@ -546,15 +546,15 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
                 c_str!("stream_%d_%d_q=%.1f\n").as_ptr(),
                 (*(*ost).file).index,
                 (*ost).index,
-                q,
+                q as c_double,
             );
             if is_last_report != 0 {
                 av_bprintf(&mut buf, c_str!("L").as_ptr());
             }
 
             if !(*ost).filter.is_null() {
-                nb_frames_dup = (*(*(*ost).filter).nb_frames_dup).load(atomic::Ordering::SeqCst);
-                nb_frames_drop = (*(*(*ost).filter).nb_frames_drop).load(atomic::Ordering::SeqCst);
+                nb_frames_dup = (*(*ost).filter).nb_frames_dup.load(atomic::Ordering::SeqCst);
+                nb_frames_drop = (*(*ost).filter).nb_frames_drop.load(atomic::Ordering::SeqCst);
             }
             vid = 1;
         }

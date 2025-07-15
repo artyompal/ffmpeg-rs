@@ -18157,8 +18157,10 @@ const _: () = {
     ["Offset of field: InputFilter::graph"][::std::mem::offset_of!(InputFilter, graph) - 0usize];
     ["Offset of field: InputFilter::name"][::std::mem::offset_of!(InputFilter, name) - 8usize];
 };
+use std::sync::atomic::AtomicI32;
+use std::sync::atomic::AtomicU64;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct OutputFilter {
     pub class: *const AVClass,
     pub graph: *mut FilterGraph,
@@ -18167,8 +18169,8 @@ pub struct OutputFilter {
     pub linklabel: *mut u8,
     pub apad: *mut ::std::os::raw::c_char,
     pub type_: AVMediaType,
-    pub nb_frames_dup: atomic_uint_least64_t,
-    pub nb_frames_drop: atomic_uint_least64_t,
+    pub nb_frames_dup: AtomicU64,
+    pub nb_frames_drop: AtomicU64,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -18489,7 +18491,6 @@ pub const CroppingType_CROP_CODEC: CroppingType = 2;
 pub const CroppingType_CROP_CONTAINER: CroppingType = 3;
 pub type CroppingType = ::std::os::raw::c_uint;
 #[repr(C)]
-#[derive(Copy, Clone)]
 pub struct OutputStream {
     pub class: *const AVClass,
     pub type_: AVMediaType,
@@ -18514,10 +18515,10 @@ pub struct OutputStream {
     pub fg_simple: *mut FilterGraph,
     pub filter: *mut OutputFilter,
     pub attachment_filename: *mut ::std::os::raw::c_char,
-    pub packets_written: atomic_uint_least64_t,
+    pub packets_written: AtomicU64,
     pub frames_encoded: u64,
     pub samples_encoded: u64,
-    pub quality: atomic_int,
+    pub quality: AtomicI32,
     pub enc_stats_pre: EncStats,
     pub enc_stats_post: EncStats,
     pub fix_sub_duration_heartbeat: ::std::os::raw::c_uint,
