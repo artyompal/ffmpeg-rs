@@ -688,7 +688,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
         avio_write(
             progress_avio,
             buf_script.str_ as *const u8,
-            buf_script.len.min(buf_script.size as usize - 1).try_into().unwrap(),
+            buf_script.len.min(buf_script.size - 1).try_into().unwrap(),
         );
         avio_flush(progress_avio);
         av_bprint_finalize(&mut buf_script, ptr::null_mut());
@@ -728,7 +728,7 @@ unsafe fn print_stream_maps() {
                     } else {
                         c_str!("?").as_ptr()
                     }),
-                    c_str_to_rust_str((*filter).name),
+                    c_str_to_rust_str((*filter).name as *const libc::c_char),
                 );
                 if nb_filtergraphs > 1 {
                     av_log(
@@ -764,7 +764,7 @@ unsafe fn print_stream_maps() {
                 ptr::null_mut(),
                 AV_LOG_INFO,
                 c_str!("  %s").as_ptr(),
-                (*(*ost).filter).name,
+                (*(*ost).filter).name as *const libc::c_char,
             );
             if nb_filtergraphs > 1 {
                 av_log(
