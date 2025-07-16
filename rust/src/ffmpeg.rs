@@ -77,7 +77,7 @@ unsafe extern "C" {
 
 // Global variables, made safe with OnceLock or atomic types
 static NB_OUTPUT_DUMPED: AtomicU64 = AtomicU64::new(0);
-static mut CURRENT_TIME: OnceLock<BenchmarkTimeStamps> = OnceLock::new();
+static CURRENT_TIME: OnceLock<BenchmarkTimeStamps> = OnceLock::new();
 
 static mut RESTORE_TTY: c_int = 0;
 static mut OLD_TTY: libc::termios =
@@ -148,7 +148,7 @@ unsafe fn c_str_to_opt_rust_str(c_ptr: *const libc::c_char) -> Option<&'static s
 
 unsafe extern "C" fn term_exit_sigsafe() {
     if RESTORE_TTY != 0 {
-        libc::tcsetattr(0, libc::TCSANOW, &OLD_TTY);
+        libc::tcsetattr(0, libc::TCSANOW, &raw const OLD_TTY);
     }
 }
 
@@ -250,7 +250,7 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
     for i in 0..nb_filtergraphs {
         fg_free(&mut *filtergraphs.add(i as usize));
     }
-    av_freep(&mut filtergraphs as *mut _ as *mut c_void);
+    av_freep(&raw mut filtergraphs as *mut _ as *mut c_void);
 
     for i in 0..nb_output_files {
         of_free(&mut *output_files.add(i as usize));
@@ -263,7 +263,7 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
     for i in 0..nb_decoders {
         dec_free(&mut *decoders.add(i as usize));
     }
-    av_freep(&mut decoders as *mut _ as *mut c_void);
+    av_freep(&raw mut decoders as *mut _ as *mut c_void);
 
     if !vstats_file.is_null() {
         if libc::fclose(vstats_file) != 0 {
@@ -284,10 +284,10 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
 
     hw_device_free_all();
 
-    av_freep(&mut filter_nbthreads as *mut _ as *mut c_void);
+    av_freep(&raw mut filter_nbthreads as *mut _ as *mut c_void);
 
-    av_freep(&mut input_files as *mut _ as *mut c_void);
-    av_freep(&mut output_files as *mut _ as *mut c_void);
+    av_freep(&raw mut input_files as *mut _ as *mut c_void);
+    av_freep(&raw mut output_files as *mut _ as *mut c_void);
 
     uninit_opts();
 
@@ -693,7 +693,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
         avio_flush(progress_avio);
         av_bprint_finalize(&mut buf_script, ptr::null_mut());
         if is_last_report != 0 {
-            let ret = avio_closep(&mut progress_avio);
+            let ret = avio_closep(&raw mut progress_avio);
             if ret < 0 {
                 let err_str = av_err2str(ret);
                 let err_cstr = std::ffi::CString::new(err_str).unwrap();
