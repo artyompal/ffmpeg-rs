@@ -48,7 +48,7 @@ fftools/ffprobe.o fftools/cmdutils.o: libavutil/ffversion.h | fftools
 OUTDIRS += fftools
 
 # Target to build static library fftools.a to use in Rust
-fftools/fftools.a: $(OBJS-ffmpeg)
+fftools/libfftools.a: $(filter-out fftools/ffmpeg.o, $(OBJS-ffmpeg))
 	ar rcs $@ $^
 
 ifdef AVPROGS

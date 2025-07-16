@@ -11,6 +11,8 @@ fn main() {
     println!("cargo:rustc-link-lib=swresample");
     println!("cargo:rustc-link-search=native=../libswscale");
     println!("cargo:rustc-link-lib=swscale");
+    println!("cargo:rustc-link-search=native=../fftools");
+    println!("cargo:rustc-link-lib=fftools");
     println!("cargo:rustc-link-lib=m");
     println!("cargo:rustc-link-lib=z");
     println!("cargo:rustc-link-lib=pthread");
