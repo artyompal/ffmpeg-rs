@@ -9069,19 +9069,19 @@ const _: () = {
 impl AVIndexEntry {
     #[inline]
     pub fn flags(&self) -> ::std::os::raw::c_int {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 2u8) as u32) }
+        unsafe { u32::cast_signed(self._bitfield_1.get(0usize, 2u8) as u32) }
     }
     #[inline]
     pub fn set_flags(&mut self, val: ::std::os::raw::c_int) {
         unsafe {
-            let val: u32 = ::std::mem::transmute(val);
+            let val: u32 = i32::cast_unsigned(val);
             self._bitfield_1.set(0usize, 2u8, val as u64)
         }
     }
     #[inline]
     pub unsafe fn flags_raw(this: *const Self) -> ::std::os::raw::c_int {
         unsafe {
-            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+            u32::cast_signed(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
                 ::std::ptr::addr_of!((*this)._bitfield_1),
                 0usize,
                 2u8,
@@ -9091,7 +9091,7 @@ impl AVIndexEntry {
     #[inline]
     pub unsafe fn set_flags_raw(this: *mut Self, val: ::std::os::raw::c_int) {
         unsafe {
-            let val: u32 = ::std::mem::transmute(val);
+            let val: u32 = i32::cast_unsigned(val);
             <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
                 ::std::ptr::addr_of_mut!((*this)._bitfield_1),
                 0usize,
@@ -9102,19 +9102,19 @@ impl AVIndexEntry {
     }
     #[inline]
     pub fn size(&self) -> ::std::os::raw::c_int {
-        unsafe { ::std::mem::transmute(self._bitfield_1.get(2usize, 30u8) as u32) }
+        unsafe { u32::cast_signed(self._bitfield_1.get(2usize, 30u8) as u32) }
     }
     #[inline]
     pub fn set_size(&mut self, val: ::std::os::raw::c_int) {
         unsafe {
-            let val: u32 = ::std::mem::transmute(val);
+            let val: u32 = i32::cast_unsigned(val);
             self._bitfield_1.set(2usize, 30u8, val as u64)
         }
     }
     #[inline]
     pub unsafe fn size_raw(this: *const Self) -> ::std::os::raw::c_int {
         unsafe {
-            ::std::mem::transmute(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
+            u32::cast_signed(<__BindgenBitfieldUnit<[u8; 4usize]>>::raw_get(
                 ::std::ptr::addr_of!((*this)._bitfield_1),
                 2usize,
                 30u8,
@@ -9124,7 +9124,7 @@ impl AVIndexEntry {
     #[inline]
     pub unsafe fn set_size_raw(this: *mut Self, val: ::std::os::raw::c_int) {
         unsafe {
-            let val: u32 = ::std::mem::transmute(val);
+            let val: u32 = i32::cast_unsigned(val);
             <__BindgenBitfieldUnit<[u8; 4usize]>>::raw_set(
                 ::std::ptr::addr_of_mut!((*this)._bitfield_1),
                 2usize,
@@ -9140,11 +9140,11 @@ impl AVIndexEntry {
     ) -> __BindgenBitfieldUnit<[u8; 4usize]> {
         let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
         __bindgen_bitfield_unit.set(0usize, 2u8, {
-            let flags: u32 = unsafe { ::std::mem::transmute(flags) };
+            let flags: u32 = unsafe { i32::cast_unsigned(flags) };
             flags as u64
         });
         __bindgen_bitfield_unit.set(2usize, 30u8, {
-            let size: u32 = unsafe { ::std::mem::transmute(size) };
+            let size: u32 = unsafe { i32::cast_unsigned(size) };
             size as u64
         });
         __bindgen_bitfield_unit

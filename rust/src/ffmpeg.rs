@@ -129,36 +129,36 @@ struct FrameDataEnc {
 }
 
 /// Helper function to convert C-style string pointer to Rust `&str`.
-unsafe fn c_str_to_rust_str(c_ptr: *const libc::c_char) -> &'static str {
+unsafe fn c_str_to_rust_str(c_ptr: *const libc::c_char) -> &'static str { unsafe {
     if c_ptr.is_null() {
         ""
     } else {
         CStr::from_ptr(c_ptr).to_str().unwrap_or("")
     }
-}
+}}
 
 /// Helper function to convert C-style string pointer to Rust `Option<&str>`.
-unsafe fn c_str_to_opt_rust_str(c_ptr: *const libc::c_char) -> Option<&'static str> {
+unsafe fn c_str_to_opt_rust_str(c_ptr: *const libc::c_char) -> Option<&'static str> { unsafe {
     if c_ptr.is_null() {
         None
     } else {
         CStr::from_ptr(c_ptr).to_str().ok()
     }
-}
+}}
 
-unsafe extern "C" fn term_exit_sigsafe() {
+unsafe extern "C" fn term_exit_sigsafe() { unsafe {
     if RESTORE_TTY != 0 {
         libc::tcsetattr(0, libc::TCSANOW, &raw const OLD_TTY);
     }
-}
+}}
 
 /// Public function for `term_exit` used in cleanup.
-unsafe extern "C" fn term_exit() {
+unsafe extern "C" fn term_exit() { unsafe {
     av_log(ptr::null_mut(), AV_LOG_QUIET, c_str!("").as_ptr());
     term_exit_sigsafe();
-}
+}}
 
-unsafe extern "C" fn sigterm_handler(sig: c_int) {
+unsafe extern "C" fn sigterm_handler(sig: c_int) { unsafe {
     RECEIVED_SIGTERM.store(sig, atomic::Ordering::SeqCst);
     RECEIVED_NB_SIGNALS.fetch_add(1, atomic::Ordering::SeqCst);
     term_exit_sigsafe();
@@ -168,10 +168,10 @@ unsafe extern "C" fn sigterm_handler(sig: c_int) {
         if ret < 0 { /* Do nothing */ };
         libc::exit(123);
     }
-}
+}}
 
 /// Public function for `term_init`.
-unsafe extern "C" fn term_init() {
+unsafe extern "C" fn term_init() { unsafe {
     let mut action: libc::sigaction = std::mem::zeroed();
     action.sa_sigaction = sigterm_handler as usize;
     libc::sigfillset(&mut action.sa_mask);
@@ -201,9 +201,9 @@ unsafe extern "C" fn term_init() {
     libc::sigaction(SIGTERM, &action, ptr::null_mut());
     libc::sigaction(SIGXCPU, &action, ptr::null_mut());
     libc::signal(SIGPIPE, libc::SIG_IGN);
-}
+}}
 
-unsafe fn read_key() -> c_int {
+unsafe fn read_key() -> c_int { unsafe {
     let mut ch: u8 = 0;
     let mut tv = libc::timeval {
         tv_sec: 0,
@@ -224,7 +224,7 @@ unsafe fn read_key() -> c_int {
     }
 
     -1
-}
+}}
 
 unsafe extern "C" fn decode_interrupt_cb(_ctx: *mut c_void) -> c_int {
     (RECEIVED_NB_SIGNALS.load(atomic::Ordering::SeqCst)
@@ -236,7 +236,7 @@ const INT_CB: AVIOInterruptCB = AVIOInterruptCB {
     opaque: ptr::null_mut(),
 };
 
-unsafe fn ffmpeg_cleanup(ret: c_int) {
+unsafe fn ffmpeg_cleanup(ret: c_int) { unsafe {
     if do_benchmark != 0 {
         let maxrss = getmaxrss() / 1024;
         av_log(
@@ -309,9 +309,9 @@ unsafe fn ffmpeg_cleanup(ret: c_int) {
     }
     term_exit();
     FFMPEG_EXITED.store(1, atomic::Ordering::SeqCst);
-}
+}}
 
-unsafe fn ost_iter(prev: *mut OutputStream) -> *mut OutputStream {
+unsafe fn ost_iter(prev: *mut OutputStream) -> *mut OutputStream { unsafe {
     let mut of_idx = if prev.is_null() {
         0
     } else {
@@ -332,9 +332,9 @@ unsafe fn ost_iter(prev: *mut OutputStream) -> *mut OutputStream {
         ost_idx = 0;
     }
     ptr::null_mut()
-}
+}}
 
-unsafe fn ist_iter(prev: *mut InputStream) -> *mut InputStream {
+unsafe fn ist_iter(prev: *mut InputStream) -> *mut InputStream { unsafe {
     let mut if_idx = if prev.is_null() {
         0
     } else {
@@ -355,15 +355,15 @@ unsafe fn ist_iter(prev: *mut InputStream) -> *mut InputStream {
         ist_idx = 0;
     }
     ptr::null_mut()
-}
+}}
 
-unsafe extern "C" fn frame_data_free(_opaque: *mut c_void, data: *mut u8) {
+unsafe extern "C" fn frame_data_free(_opaque: *mut c_void, data: *mut u8) { unsafe {
     let fd = data as *mut FrameData;
     avcodec_parameters_free(&mut (*fd).par_enc);
     av_free(data as *mut c_void);
-}
+}}
 
-unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_int {
+unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_int { unsafe {
     let mut src = *dst;
 
     if src.is_null() || (writable != 0 && av_buffer_is_writable(src) == 0) {
@@ -415,49 +415,49 @@ unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_in
         }
     }
     0
-}
+}}
 
 /// Public function for `frame_data`.
-unsafe extern "C" fn frame_data(frame: *mut AVFrame) -> *mut FrameData {
+unsafe extern "C" fn frame_data(frame: *mut AVFrame) -> *mut FrameData { unsafe {
     let ret = frame_data_ensure(&mut (*frame).opaque_ref, 1);
     if ret < 0 {
         ptr::null_mut()
     } else {
         (*(*frame).opaque_ref).data as *mut FrameData
     }
-}
+}}
 
 /// Public function for `frame_data_c`.
-unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData {
+unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData { unsafe {
     let ret = frame_data_ensure(&mut (*frame).opaque_ref, 0);
     if ret < 0 {
         ptr::null_mut()
     } else {
         (*(*frame).opaque_ref).data as *const FrameData
     }
-}
+}}
 
 /// Public function for `packet_data`.
-unsafe extern "C" fn packet_data(pkt: *mut AVPacket) -> *mut FrameData {
+unsafe extern "C" fn packet_data(pkt: *mut AVPacket) -> *mut FrameData { unsafe {
     let ret = frame_data_ensure(&mut (*pkt).opaque_ref, 1);
     if ret < 0 {
         ptr::null_mut()
     } else {
         (*(*pkt).opaque_ref).data as *mut FrameData
     }
-}
+}}
 
 /// Public function for `packet_data_c`.
-unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData {
+unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData { unsafe {
     let ret = frame_data_ensure(&mut (*pkt).opaque_ref, 0);
     if ret < 0 {
         ptr::null_mut()
     } else {
         (*(*pkt).opaque_ref).data as *const FrameData
     }
-}
+}}
 
-unsafe fn update_benchmark(fmt: Option<&CStr>, mut args: va_list) {
+unsafe fn update_benchmark(fmt: Option<&CStr>, mut args: va_list) { unsafe {
     if do_benchmark_all != 0 {
         let t = get_benchmark_time_stamps();
         if let Some(fmt_cstr) = fmt {
@@ -476,9 +476,9 @@ unsafe fn update_benchmark(fmt: Option<&CStr>, mut args: va_list) {
         }
         CURRENT_TIME.set(t).unwrap(); // Update the global static
     }
-}
+}}
 
-unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, pts: i64) {
+unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, pts: i64) { unsafe {
     let mut buf = std::mem::zeroed();
     let mut buf_script = std::mem::zeroed();
     let total_size = of_filesize(*output_files.add(0)); // Assuming output_files[0] exists
@@ -707,9 +707,9 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
         }
     }
     FIRST_REPORT = 0;
-}
+}}
 
-unsafe fn print_stream_maps() {
+unsafe fn print_stream_maps() { unsafe {
     av_log(ptr::null_mut(), AV_LOG_INFO, c_str!("Stream mapping:\n").as_ptr());
 
     let mut ist = ist_iter(ptr::null_mut());
@@ -840,9 +840,9 @@ unsafe fn print_stream_maps() {
         av_log(ptr::null_mut(), AV_LOG_INFO, c_str!("\n").as_ptr());
         ost = ost_iter(ost);
     }
-}
+}}
 
-unsafe fn set_tty_echo(on: c_int) {
+unsafe fn set_tty_echo(on: c_int) { unsafe {
     let mut tty: libc::termios = std::mem::zeroed();
     if libc::tcgetattr(0, &mut tty) == 0 {
         if on != 0 {
@@ -852,9 +852,9 @@ unsafe fn set_tty_echo(on: c_int) {
         }
         libc::tcsetattr(0, libc::TCSANOW, &tty);
     }
-}
+}}
 
-unsafe fn check_keyboard_interaction(cur_time: i64) -> c_int {
+unsafe fn check_keyboard_interaction(cur_time: i64) -> c_int { unsafe {
     static mut LAST_TIME: i64 = 0; // Initialize to avoid uninitialized read
     if RECEIVED_NB_SIGNALS.load(atomic::Ordering::SeqCst) != 0 {
         return AVERROR_EXIT;
@@ -1010,9 +1010,9 @@ unsafe fn check_keyboard_interaction(cur_time: i64) -> c_int {
         );
     }
     0
-}
+}}
 
-unsafe fn transcode(sch: *mut Scheduler) -> c_int {
+unsafe fn transcode(sch: *mut Scheduler) -> c_int { unsafe {
     let mut ret = 0;
     print_stream_maps();
 
@@ -1061,9 +1061,9 @@ unsafe fn transcode(sch: *mut Scheduler) -> c_int {
     print_report(1, timer_start, av_gettime_relative(), transcode_ts);
 
     ret
-}
+}}
 
-unsafe fn get_benchmark_time_stamps() -> BenchmarkTimeStamps {
+unsafe fn get_benchmark_time_stamps() -> BenchmarkTimeStamps { unsafe {
     let mut time_stamps = BenchmarkTimeStamps {
         real_usec: av_gettime_relative(),
         user_usec: 0,
@@ -1078,14 +1078,14 @@ unsafe fn get_benchmark_time_stamps() -> BenchmarkTimeStamps {
         (rusage.ru_stime.tv_sec * 1_000_000_000i64) / 1000 + rusage.ru_stime.tv_usec;
     
     time_stamps
-}
+}}
 
-unsafe fn getmaxrss() -> i64 {
+unsafe fn getmaxrss() -> i64 { unsafe {
     let mut rusage: libc::rusage = std::mem::zeroed();
     libc::getrusage(libc::RUSAGE_SELF, &mut rusage);
     // Assuming ru_maxrss is in kilobytes on Linux/macOS
     return rusage.ru_maxrss * 1024;
-}
+}}
 
 /// Safe Rust implementation of av_err2str.
 pub fn av_err2str(errnum: i32) -> String {
@@ -1105,7 +1105,7 @@ pub fn av_err2str(errnum: i32) -> String {
 }
 
 // Original ffmpeg.c main() function
-unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c_int {
+unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c_int { unsafe {
     let mut sch: *mut Scheduler = ptr::null_mut();
     let mut ret: c_int;
 
@@ -1193,7 +1193,7 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
 
     goto_finish!(); // This will only be reached if an error happened before the main loop or if
                     // the loop completes and needs final cleanup.
-}
+}}
 
 fn main() {
     use std::env;
