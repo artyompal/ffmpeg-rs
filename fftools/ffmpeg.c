@@ -101,6 +101,18 @@ atomic_uint nb_output_dumped = 0;
 static BenchmarkTimeStamps current_time;
 AVIOContext *progress_avio = NULL;
 
+InputFile   **input_files   = NULL;
+int        nb_input_files   = 0;
+
+OutputFile   **output_files   = NULL;
+int         nb_output_files   = 0;
+
+FilterGraph **filtergraphs;
+int        nb_filtergraphs;
+
+Decoder     **decoders;
+int        nb_decoders;
+
 #if HAVE_TERMIOS_H
 
 /* init terminal so that we can grab keys */

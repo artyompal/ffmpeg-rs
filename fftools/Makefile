@@ -20,7 +20,6 @@ OBJS-ffmpeg +=                  \
     fftools/ffmpeg_opt.o        \
     fftools/ffmpeg_sched.o      \
     fftools/ffmpeg_utils.o      \
-    fftools/ffmpeg_vars.o       \
     fftools/objpool.o           \
     fftools/sync_queue.o        \
     fftools/thread_queue.o      \
@@ -42,11 +41,7 @@ endef
 
 $(foreach P,$(AVPROGS-yes),$(eval $(call DOFFTOOL,$(P))))
 
-# Target to build static library fftools.a to use in Rust
-fftools/libfftools.a: $(filter-out fftools/ffmpeg.o, $(OBJS-ffmpeg))
-	ar rcs $@ $^
-
-all: $(AVPROGS) fftools/libfftools.a
+all: $(AVPROGS)
 
 fftools/ffprobe.o fftools/cmdutils.o: libavutil/ffversion.h | fftools
 OUTDIRS += fftools
