@@ -61,10 +61,16 @@ macro_rules! c_str {
     };
 }
 
+// Define global variables required by FFmpeg.
+#[unsafe(no_mangle)] 
+pub static program_name: &[u8] = b"ffmpeg\0";
+
+#[unsafe(no_mangle)] 
+pub static program_birth_year: libc::c_int = 2000;
+
+
 // External C variables
 unsafe extern "C" {
-    pub static program_name: *const libc::c_char;
-    pub static program_birth_year: libc::c_int;
     pub static mut vstats_file: *mut libc::FILE;
     pub static mut stdin_interaction: libc::c_int;
     pub static mut do_benchmark: libc::c_int;
@@ -153,6 +159,7 @@ unsafe extern "C" fn term_exit_sigsafe() { unsafe {
 }}
 
 /// Public function for `term_exit` used in cleanup.
+#[unsafe(no_mangle)] 
 unsafe extern "C" fn term_exit() { unsafe {
     av_log(ptr::null_mut(), AV_LOG_QUIET, c_str!("").as_ptr());
     term_exit_sigsafe();
@@ -171,6 +178,7 @@ unsafe extern "C" fn sigterm_handler(sig: c_int) { unsafe {
 }}
 
 /// Public function for `term_init`.
+#[unsafe(no_mangle)] 
 unsafe extern "C" fn term_init() { unsafe {
     let mut action: libc::sigaction = std::mem::zeroed();
     action.sa_sigaction = sigterm_handler as usize;
@@ -334,7 +342,8 @@ unsafe fn ost_iter(prev: *mut OutputStream) -> *mut OutputStream { unsafe {
     ptr::null_mut()
 }}
 
-unsafe fn ist_iter(prev: *mut InputStream) -> *mut InputStream { unsafe {
+#[unsafe(no_mangle)] 
+unsafe extern "C" fn ist_iter(prev: *mut InputStream) -> *mut InputStream { unsafe {
     let mut if_idx = if prev.is_null() {
         0
     } else {
@@ -418,6 +427,7 @@ unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_in
 }}
 
 /// Public function for `frame_data`.
+#[unsafe(no_mangle)] 
 unsafe extern "C" fn frame_data(frame: *mut AVFrame) -> *mut FrameData { unsafe {
     let ret = frame_data_ensure(&mut (*frame).opaque_ref, 1);
     if ret < 0 {
@@ -438,6 +448,7 @@ unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData { uns
 }}
 
 /// Public function for `packet_data`.
+#[unsafe(no_mangle)] 
 unsafe extern "C" fn packet_data(pkt: *mut AVPacket) -> *mut FrameData { unsafe {
     let ret = frame_data_ensure(&mut (*pkt).opaque_ref, 1);
     if ret < 0 {
@@ -457,7 +468,8 @@ unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData { uns
     }
 }}
 
-unsafe fn update_benchmark(fmt: Option<&CStr>, mut args: va_list) { unsafe {
+#[unsafe(no_mangle)] 
+unsafe extern "C" fn update_benchmark(fmt: Option<&CStr>, mut args: va_list) { unsafe {
     if do_benchmark_all != 0 {
         let t = get_benchmark_time_stamps();
         if let Some(fmt_cstr) = fmt {
