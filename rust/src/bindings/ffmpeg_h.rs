@@ -18653,30 +18653,6 @@ const _: () = {
     ["Offset of field: FrameData::par_enc"][::std::mem::offset_of!(FrameData, par_enc) - 104usize];
 };
 unsafe extern "C" {
-    pub static mut input_files: *mut *mut InputFile;
-}
-unsafe extern "C" {
-    pub static mut nb_input_files: ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub static mut output_files: *mut *mut OutputFile;
-}
-unsafe extern "C" {
-    pub static mut nb_output_files: ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub static mut filtergraphs: *mut *mut FilterGraph;
-}
-unsafe extern "C" {
-    pub static mut nb_filtergraphs: ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub static mut decoders: *mut *mut Decoder;
-}
-unsafe extern "C" {
-    pub static mut nb_decoders: ::std::os::raw::c_int;
-}
-unsafe extern "C" {
     pub static mut vstats_filename: *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
@@ -18731,9 +18707,6 @@ unsafe extern "C" {
     pub static mut stdin_interaction: ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub static mut progress_avio: *mut AVIOContext;
-}
-unsafe extern "C" {
     pub static mut max_error_rate: f32;
 }
 unsafe extern "C" {
@@ -18747,9 +18720,6 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub static mut auto_conversion_filters: ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub static int_cb: AVIOInterruptCB;
 }
 unsafe extern "C" {
     pub static options: [OptionDef; 0usize];
@@ -18768,9 +18738,6 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub static mut recast_media: ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    pub static mut vstats_file: *mut FILE;
 }
 unsafe extern "C" {
     pub fn term_init();

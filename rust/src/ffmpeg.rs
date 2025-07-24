@@ -31,7 +31,8 @@ use bindings::ffmpeg_h::{
     AVBufferRef, AVFrame, AVPacket,
     av_buffer_is_writable, av_buffer_create, av_buffer_unref,
     FF_QP2LAMBDA, 
-    nb_input_files, input_files, nb_output_files, output_files, nb_filtergraphs, filtergraphs, nb_decoders, decoders, progress_avio,
+    InputFile, OutputFile, FilterGraph, Decoder,
+    AVIOContext,
 };
 use bindings::ffmpeg_h::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
@@ -68,10 +69,44 @@ pub static program_name: &[u8] = b"ffmpeg\0";
 #[unsafe(no_mangle)] 
 pub static program_birth_year: libc::c_int = 2000;
 
+#[unsafe(no_mangle)] 
+pub static mut input_files: *mut *mut InputFile = ptr::null_mut();
 
-// External C variables
+#[unsafe(no_mangle)] 
+pub static mut nb_input_files: ::std::os::raw::c_int = 0;
+
+#[unsafe(no_mangle)] 
+pub static mut output_files: *mut *mut OutputFile = ptr::null_mut();
+
+#[unsafe(no_mangle)] 
+pub static mut nb_output_files: ::std::os::raw::c_int = 0;
+
+#[unsafe(no_mangle)] 
+pub static mut filtergraphs: *mut *mut FilterGraph = ptr::null_mut();
+
+#[unsafe(no_mangle)] 
+pub static mut nb_filtergraphs: ::std::os::raw::c_int = 0;
+
+#[unsafe(no_mangle)] 
+pub static mut decoders: *mut *mut Decoder = ptr::null_mut();
+
+#[unsafe(no_mangle)] 
+pub static mut nb_decoders: ::std::os::raw::c_int = 0;
+
+#[unsafe(no_mangle)] 
+pub static mut vstats_file: *mut libc::FILE = ptr::null_mut();
+
+#[unsafe(no_mangle)] 
+pub static mut progress_avio: *mut AVIOContext = ptr::null_mut();
+
+#[unsafe(no_mangle)] 
+pub static mut int_cb: AVIOInterruptCB = AVIOInterruptCB {
+    callback: Some(decode_interrupt_cb),
+    opaque: ptr::null_mut(),
+}; 
+
+
 unsafe extern "C" {
-    pub static mut vstats_file: *mut libc::FILE;
     pub static mut stdin_interaction: libc::c_int;
     pub static mut do_benchmark: libc::c_int;
     pub static mut do_benchmark_all: libc::c_int;
