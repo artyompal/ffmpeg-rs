@@ -117,7 +117,9 @@ unsafe extern "C" {
 }
 
 // Global variables, made safe with OnceLock or atomic types
-static NB_OUTPUT_DUMPED: AtomicU64 = AtomicU64::new(0);
+#[unsafe(no_mangle)] 
+pub static nb_output_dumped: AtomicI32 = AtomicI32::new(0);
+
 static CURRENT_TIME: OnceLock<BenchmarkTimeStamps> = OnceLock::new();
 
 static mut RESTORE_TTY: c_int = 0;
@@ -544,7 +546,7 @@ unsafe fn print_report(is_last_report: c_int, timer_start: i64, cur_time: i64, p
             last_time = cur_time;
         }
         if ((cur_time - last_time) < stats_period && FIRST_REPORT != 1) ||
-            (FIRST_REPORT != 0 && NB_OUTPUT_DUMPED.load(atomic::Ordering::SeqCst) < nb_output_files as u64) {
+            (FIRST_REPORT != 0 && nb_output_dumped.load(atomic::Ordering::SeqCst) < nb_output_files) {
             return;
         }
         last_time = cur_time;
