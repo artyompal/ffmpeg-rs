@@ -41,7 +41,11 @@ endef
 
 $(foreach P,$(AVPROGS-yes),$(eval $(call DOFFTOOL,$(P))))
 
-all: $(AVPROGS)
+# Target to build static library fftools.a to use in Rust
+fftools/libfftools.a: $(filter-out fftools/ffmpeg.o, $(OBJS-ffmpeg))
+	ar rcs $@ $^
+
+all: $(AVPROGS) fftools/libfftools.a
 
 fftools/ffprobe.o fftools/cmdutils.o: libavutil/ffversion.h | fftools
 OUTDIRS += fftools
