@@ -300,7 +300,7 @@ unsafe fn ffmpeg_cleanup(ret: c_int) { unsafe {
     for i in 0..nb_filtergraphs {
         fg_free(&mut *filtergraphs.add(i as usize));
     }
-    av_freep(&raw mut filtergraphs as *mut _ as *mut c_void);
+    av_freep(ptr::addr_of_mut!(filtergraphs).cast());
 
     for i in 0..nb_output_files {
         of_free(&mut *output_files.add(i as usize));
@@ -313,7 +313,7 @@ unsafe fn ffmpeg_cleanup(ret: c_int) { unsafe {
     for i in 0..nb_decoders {
         dec_free(&mut *decoders.add(i as usize));
     }
-    av_freep(&raw mut decoders as *mut _ as *mut c_void);
+    av_freep(ptr::addr_of_mut!(decoders).cast());
 
     if !vstats_file.is_null() {
         if libc::fclose(vstats_file) != 0 {
@@ -329,15 +329,15 @@ unsafe fn ffmpeg_cleanup(ret: c_int) { unsafe {
     }
     // Assuming vstats_filename is a global C pointer that needs to be freed
     let mut vstats_filename_ptr: *mut libc::c_char = ptr::null_mut();
-    av_freep(&mut vstats_filename_ptr as *mut _ as *mut c_void);
+    av_freep(ptr::addr_of_mut!(vstats_filename_ptr).cast());
     of_enc_stats_close();
 
     hw_device_free_all();
 
-    av_freep(&raw mut filter_nbthreads as *mut _ as *mut c_void);
+    av_freep(ptr::addr_of_mut!(filter_nbthreads).cast());
 
-    av_freep(&raw mut input_files as *mut _ as *mut c_void);
-    av_freep(&raw mut output_files as *mut _ as *mut c_void);
+    av_freep(ptr::addr_of_mut!(input_files).cast());
+    av_freep(ptr::addr_of_mut!(output_files).cast());
 
     uninit_opts();
 
@@ -432,7 +432,7 @@ unsafe fn frame_data_ensure(dst: *mut *mut AVBufferRef, writable: c_int) -> c_in
         );
         if (*dst).is_null() {
             av_buffer_unref(&mut src);
-            av_freep(&mut fd_ptr as *mut _ as *mut c_void);
+            av_freep(ptr::addr_of_mut!(fd_ptr).cast());
             return AVERROR(libc::ENOMEM);
         }
 
@@ -550,7 +550,7 @@ pub unsafe extern "C" fn check_avoptions_used(
         let option = av_opt_find(class as *mut c_void, optname, std::ptr::null(), 0, AV_OPT_SEARCH_CHILDREN | AV_OPT_SEARCH_FAKE_OBJ);
         let foption = av_opt_find(fclass as *mut c_void, optname, std::ptr::null(), 0, AV_OPT_SEARCH_CHILDREN | AV_OPT_SEARCH_FAKE_OBJ);
         let mut optname_void = optname as *mut c_void;
-        av_freep(&mut optname_void as *mut _ as *mut c_void);
+        av_freep(ptr::addr_of_mut!(optname_void).cast());
         if option.is_null() || !foption.is_null() {
             continue;
         }
