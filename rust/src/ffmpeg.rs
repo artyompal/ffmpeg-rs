@@ -480,7 +480,8 @@ unsafe extern "C" fn frame_data(frame: *mut AVFrame) -> *mut FrameData { unsafe 
 }}
 
 /// Public function for `frame_data_c`.
-unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData { unsafe {
+#[unsafe(no_mangle)] 
+pub unsafe extern "C" fn frame_data_c(frame: *mut AVFrame) -> *const FrameData { unsafe {
     let ret = frame_data_ensure(&mut (*frame).opaque_ref, 0);
     if ret < 0 {
         ptr::null_mut()
@@ -511,7 +512,13 @@ unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData { uns
 }}
 
 /// Public function for `check_avoptions_used`.
-unsafe extern "C" fn check_avoptions_used(opts: *const AVDictionary, opts_used: *const AVDictionary, logctx: *mut c_void, decode: c_int) -> c_int { unsafe {
+#[unsafe(no_mangle)] 
+pub unsafe extern "C" fn check_avoptions_used(
+    opts: *const AVDictionary,
+    opts_used: *const AVDictionary,
+    logctx: *mut ::std::os::raw::c_void,
+    decode: ::std::os::raw::c_int,
+) -> ::std::os::raw::c_int { unsafe {
     let class = avcodec_get_class();
     let fclass = avformat_get_class();
     let flag = if decode != 0 { AV_OPT_FLAG_DECODING_PARAM } else { AV_OPT_FLAG_ENCODING_PARAM };
