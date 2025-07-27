@@ -32,7 +32,8 @@ use bindings::ffmpeg_h::{
     av_buffer_is_writable, av_buffer_create, av_buffer_unref,
     FF_QP2LAMBDA, 
     InputFile, OutputFile, FilterGraph, Decoder,
-    AVIOContext,
+    AVIOContext, AVDictionary, AVDictionaryEntry, avcodec_get_class, avformat_get_class, 
+    av_dict_iterate, av_dict_get, av_strdup, 
 };
 use bindings::ffmpeg_h::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
@@ -45,8 +46,12 @@ use bindings::ffmpeg_h::{va_list, vsnprintf};
 use bindings::avutil::{AVMEDIA_TYPE_VIDEO, AV_NOPTS_VALUE, AV_LOG_FATAL};
 use bindings::avutil_error::{AVERROR, AVERROR_EXIT, FFMPEG_ERROR_RATE_EXCEEDED};
 use bindings::ffmpeg_h::{av_free, av_freep, av_mallocz};
+use bindings::avdevice::{
+    AV_OPT_FLAG_DECODING_PARAM, AV_OPT_FLAG_ENCODING_PARAM, AV_OPT_SEARCH_CHILDREN, AV_OPT_SEARCH_FAKE_OBJ,
+    av_opt_find,
+};
 
-use libc::{c_double, c_int, c_void, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU};
+use libc::{c_double, c_int, c_void, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU, ENOMEM, EINVAL};
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::ptr;
@@ -503,6 +508,68 @@ unsafe extern "C" fn packet_data_c(pkt: *mut AVPacket) -> *const FrameData { uns
     } else {
         (*(*pkt).opaque_ref).data as *const FrameData
     }
+}}
+
+/// Public function for `check_avoptions_used`.
+unsafe extern "C" fn check_avoptions_used(opts: *const AVDictionary, opts_used: *const AVDictionary, logctx: *mut c_void, decode: c_int) -> c_int { unsafe {
+    let class = avcodec_get_class();
+    let fclass = avformat_get_class();
+    let flag = if decode != 0 { AV_OPT_FLAG_DECODING_PARAM } else { AV_OPT_FLAG_ENCODING_PARAM };
+    let mut e: *const AVDictionaryEntry = std::ptr::null();
+
+    // av_dict_iterate: e = av_dict_iterate(opts, e)
+    while {
+        e = av_dict_iterate(opts, e);
+        !e.is_null()
+    } {
+        // If already used, skip
+        if !av_dict_get(opts_used, (*e).key, std::ptr::null(), 0).is_null() {
+            continue;
+        }
+
+        // Duplicate key
+        let optname = av_strdup((*e).key);
+        if optname.is_null() {
+            return AVERROR(ENOMEM);
+        }
+
+        // Find ':' and split
+        let mut p = libc::strchr(optname, b':' as i32);
+        if !p.is_null() {
+            *p = 0;
+        }
+
+        // Find option in codec and format class
+        let option = av_opt_find(class as *mut c_void, optname, std::ptr::null(), 0, AV_OPT_SEARCH_CHILDREN | AV_OPT_SEARCH_FAKE_OBJ);
+        let foption = av_opt_find(fclass as *mut c_void, optname, std::ptr::null(), 0, AV_OPT_SEARCH_CHILDREN | AV_OPT_SEARCH_FAKE_OBJ);
+        let mut optname_void = optname as *mut c_void;
+        av_freep(&mut optname_void as *mut _ as *mut c_void);
+        if option.is_null() || !foption.is_null() {
+            continue;
+        }
+
+        // Check flags
+        if ((*option).flags & flag) == 0 {
+            av_log(
+                logctx,
+                AV_LOG_ERROR,
+                c_str!("Codec AVOption %s (%s) is not a %s option.\n").as_ptr(),
+                (*e).key,
+                if !(*option).help.is_null() { (*option).help } else { c_str!("").as_ptr() },
+                if decode != 0 { c_str!("decoding").as_ptr() } else { c_str!("encoding").as_ptr() },
+            );
+            return AVERROR(EINVAL);
+        }
+
+        av_log(
+            logctx,
+            AV_LOG_WARNING,
+            c_str!("Codec AVOption %s (%s) has not been used for any stream. The most likely reason is either wrong type (e.g. a video option with no video streams) or that it is a private option of some decoder which was not actually used for any stream.\n").as_ptr(),
+            (*e).key,
+            if !(*option).help.is_null() { (*option).help } else { c_str!("").as_ptr() },
+        );
+    }
+    0
 }}
 
 #[unsafe(no_mangle)] 
