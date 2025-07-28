@@ -33,7 +33,7 @@ use bindings::ffmpeg_h::{
     FF_QP2LAMBDA, 
     InputFile, OutputFile, FilterGraph, Decoder,
     AVIOContext, AVDictionary, AVDictionaryEntry, avcodec_get_class, avformat_get_class, 
-    av_dict_iterate, av_dict_get, av_strdup, 
+    av_dict_iterate, av_dict_get, av_strdup, OptionDef,
 };
 use bindings::ffmpeg_h::{sch_alloc, sch_free, sch_start, sch_stop, sch_wait, Scheduler};
 use bindings::avutil_bprint::{av_bprint_finalize, av_bprint_init, av_bprintf, AV_BPRINT_SIZE_AUTOMATIC};
@@ -55,7 +55,7 @@ use libc::{c_double, c_int, c_void, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGXCPU, 
 use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::ptr;
-use std::sync::atomic::{self, AtomicI32, AtomicU64};
+use std::sync::atomic::{self, AtomicI32};
 use std::sync::OnceLock;
 
 // Macro to create CString literals for safety and convenience.
@@ -145,6 +145,10 @@ static RECEIVED_NB_SIGNALS: AtomicI32 = AtomicI32::new(0);
 static TRANSCODE_INIT_DONE: AtomicI32 = AtomicI32::new(0);
 static FFMPEG_EXITED: AtomicI32 = AtomicI32::new(0);
 static mut COPY_TS_FIRST_PTS: i64 = AV_NOPTS_VALUE;
+
+unsafe extern "C" {
+    pub static options: [OptionDef; 0];
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1233,14 +1237,14 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
     let mut ret: c_int;
 
     av_log_set_flags(AV_LOG_SKIP_REPEATED);
-    parse_loglevel(argc, argv, ptr::null_mut()); // Assuming 'options' global is handled by parse_loglevel internally or not needed
+    parse_loglevel(argc, argv, options.as_ptr());
 
     // CONFIG_AVDEVICE is assumed to be true since we include avdevice.rs
     avdevice_register_all();
 
     avformat_network_init();
 
-    show_banner(argc, argv, ptr::null_mut()); // Assuming 'options' global is handled by show_banner internally or not needed
+    show_banner(argc, argv, options.as_ptr());
 
     // This macro simulates a C 'goto finish;' for error handling.
     // It cleans up and returns.
