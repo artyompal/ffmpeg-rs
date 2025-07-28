@@ -69,7 +69,7 @@ macro_rules! c_str {
 
 // Define global variables required by FFmpeg.
 #[unsafe(no_mangle)] 
-pub static program_name: &[u8] = b"ffmpeg\0";
+pub static program_name: [u8; 10] = *b"ffmpeg_rs\0";
 
 #[unsafe(no_mangle)] 
 pub static program_birth_year: libc::c_int = 2000;
@@ -1276,7 +1276,7 @@ unsafe extern "C" fn ffmpeg_main(argc: c_int, argv: *mut *mut libc::c_char) -> c
             ptr::null_mut(),
             AV_LOG_WARNING,
             c_str!("Use -h to get full help or, even better, run 'man %s'\n").as_ptr(),
-            program_name,
+            program_name.as_ptr(),
         );
         ret = 1;
         goto_finish!();
