@@ -9726,14 +9726,12 @@ const _: () = {
 impl AVIndexEntry {
     #[inline]
     pub fn flags(&self) -> ::std::os::raw::c_int {
-        unsafe { u32::cast_signed(self._bitfield_1.get(0usize, 2u8) as u32) }
+        u32::cast_signed(self._bitfield_1.get(0usize, 2u8) as u32) 
     }
     #[inline]
     pub fn set_flags(&mut self, val: ::std::os::raw::c_int) {
-        unsafe {
-            let val: u32 = i32::cast_unsigned(val);
-            self._bitfield_1.set(0usize, 2u8, val as u64)
-        }
+        let val: u32 = i32::cast_unsigned(val);
+        self._bitfield_1.set(0usize, 2u8, val as u64)
     }
     #[inline]
     pub unsafe fn flags_raw(this: *const Self) -> ::std::os::raw::c_int {
@@ -9759,14 +9757,12 @@ impl AVIndexEntry {
     }
     #[inline]
     pub fn size(&self) -> ::std::os::raw::c_int {
-        unsafe { u32::cast_signed(self._bitfield_1.get(2usize, 30u8) as u32) }
+        u32::cast_signed(self._bitfield_1.get(2usize, 30u8) as u32) 
     }
     #[inline]
     pub fn set_size(&mut self, val: ::std::os::raw::c_int) {
-        unsafe {
-            let val: u32 = i32::cast_unsigned(val);
-            self._bitfield_1.set(2usize, 30u8, val as u64)
-        }
+        let val: u32 = i32::cast_unsigned(val);
+        self._bitfield_1.set(2usize, 30u8, val as u64)
     }
     #[inline]
     pub unsafe fn size_raw(this: *const Self) -> ::std::os::raw::c_int {
@@ -9797,11 +9793,11 @@ impl AVIndexEntry {
     ) -> __BindgenBitfieldUnit<[u8; 4usize]> {
         let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
         __bindgen_bitfield_unit.set(0usize, 2u8, {
-            let flags: u32 = unsafe { i32::cast_unsigned(flags) };
+            let flags: u32 = i32::cast_unsigned(flags);
             flags as u64
         });
         __bindgen_bitfield_unit.set(2usize, 30u8, {
-            let size: u32 = unsafe { i32::cast_unsigned(size) };
+            let size: u32 = i32::cast_unsigned(size);
             size as u64
         });
         __bindgen_bitfield_unit
