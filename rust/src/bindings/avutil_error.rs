@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(non_snake_case)]
 
 /// Returns a negative error code from a POSIX error code, to return from library functions.
 #[inline(always)]
